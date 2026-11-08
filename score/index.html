@@ -130,7 +130,7 @@
           <dt>打席</dt><dd>打席に立った回数（すべて）</dd>
           <dt>打数</dt><dd>打席から四球・死球・犠打・犠飛を引いた数</dd>
           <dt>打率</dt><dd>安打 ÷ 打数</dd>
-          <dt>出塁率</dt><dd>（安打＋四球＋死球）÷（打数＋四球＋死球＋犠飛）</dd>
+          <dt>出塁率</dt><dd>（安打＋四死球）÷（打数＋四死球＋犠飛）<br>※2018〜2024年度の記録は、Excelの記録に合わせて犠打も割る数に入れています</dd>
           <dt>長打率</dt><dd>塁打数 ÷ 打数（単打1・二塁打2・三塁打3・本塁打4）</dd>
           <dt>OPS</dt><dd>出塁率＋長打率。打者の総合力の目安</dd>
           <dt>得点</dt><dd>ホームに還ってきた回数</dd>
@@ -183,6 +183,16 @@
           <li>1〜2分すると、成績ページが新しい記録に変わる</li>
         </ol>
         <p class="hint">ファイル名は <code>data.json</code> のままにしてください。名前が違うと成績ページが読み込めません</p>
+      </div>
+
+      <div class="card">
+        <h2>過去の成績を取り込む</h2>
+        <p>Excelの記録から変換した過去の成績のファイルを取り込みます。今の記録はそのまま残り、成績タブや成績ページの「シーズン」「通算」に合計されます。</p>
+        <p id="history-summary" class="hint"></p>
+        <p id="history-names" class="hint pre-line"></p>
+        <button id="history-button" class="wide secondary">過去の成績のファイルを選ぶ</button>
+        <input type="file" id="history-file" accept=".json,application/json" hidden>
+        <button id="history-clear" class="danger small clear-history" hidden>取り込んだ過去の成績を消す</button>
       </div>
 
       <div class="card">

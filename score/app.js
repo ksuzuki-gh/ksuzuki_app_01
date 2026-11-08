@@ -29,7 +29,7 @@ function loadData() {
   } catch (e) {
     // 読めなかったときは下の「空っぽのデータ」を使う
   }
-  return { players: [], games: [] };
+  return normalizeData({ players: [], games: [] }); // 空っぽのデータ
 }
 
 function saveData() {
@@ -577,7 +577,7 @@ function renderStats() {
   filter.append(new Option("通算（全試合）", "all"));
   const seasonGroup = document.createElement("optgroup");
   seasonGroup.label = "シーズン";
-  for (const s of seasonsOf(data.games)) seasonGroup.append(new Option(seasonLabel(s), `season:${s}`));
+  for (const s of allSeasons(data)) seasonGroup.append(new Option(seasonLabel(s), `season:${s}`));
   filter.append(seasonGroup);
   appendGameOptions(filter, data.games);
 
@@ -585,16 +585,17 @@ function renderStats() {
   const values = [...filter.options].map((o) => o.value);
   filter.value = values.includes(before) ? before : "all";
 
-  let games;
+  let scope;
   if (filter.value === "all") {
-    games = data.games;
+    scope = { type: "all" };
   } else if (filter.value.startsWith("season:")) {
-    const season = Number(filter.value.slice("season:".length));
-    games = data.games.filter((g) => g.season === season);
+    scope = { type: "season", season: Number(filter.value.slice("season:".length)) };
   } else {
-    games = [findGame(filter.value)];
+    scope = { type: "game", id: filter.value };
   }
-  renderStatsTable($("stats-table"), games, data.players, false);
+  // 計算と表の作り方は common.js。選手は登録順、過去の成績だけの選手（OBなど）はその後ろ
+  const collected = collectStats(data, scope);
+  renderStatsTable($("stats-table"), collected, collected.rows, false);
 }
 
 // =========================================================
@@ -674,6 +675,62 @@ function renderDataSummary() {
   const atBatCount = data.games.reduce((sum, g) => sum + g.atBats.length, 0);
   $("data-summary").textContent =
     `選手 ${data.players.length}人 ／ 試合 ${data.games.length}件 ／ 打席 ${atBatCount}件`;
+
+  // 過去の成績
+  const history = data.history;
+  const hasHistory = history.games.length > 0 || history.seasonTotals.length > 0;
+  $("history-clear").hidden = !hasHistory;
+  if (!hasHistory) {
+    $("history-summary").textContent = "まだ取り込んでいません";
+    $("history-names").textContent = "";
+    return;
+  }
+  const seasons = seasonsOf([...history.games, ...history.seasonTotals]);
+  $("history-summary").textContent =
+    `${seasonLabel(seasons[seasons.length - 1])}〜${seasonLabel(seasons[0])}：試合ごとの記録 ${history.games.length}試合` +
+    (history.seasonTotals.length > 0 ? ` ＋ シーズン合計 ${seasonsOf(history.seasonTotals).map(seasonLabel).join("・")}` : "");
+
+  // アプリの選手とつながっていない名前（同じ名前で登録すると、通算成績がつながる）
+  const names = new Set([...history.seasonTotals.map((t) => t.name), ...history.games.flatMap((g) => g.lines.map((l) => l.name))]);
+  const unlinked = [...names].filter((n) => !data.players.some((p) => p.name === n));
+  $("history-names").textContent = unlinked.length === 0
+    ? "過去の成績の名前は、すべてアプリの選手とつながっています。"
+    : `アプリの選手とつながっていない名前（${unlinked.length}人）：${unlinked.join("、")}\n` +
+      "今のメンバーは、「選手」タブで同じ名前で登録すると成績がつながります。登録しない人は、名前だけで成績表に出ます。";
+}
+
+// 過去の成績（変換したファイル）を取り込む。今の記録はそのまま
+function importHistory(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let history = null;
+    try {
+      const json = JSON.parse(reader.result);
+      if (json.app === "softball-score-history") history = normalizeHistory(json.history);
+    } catch (e) {
+      // 読めないファイルなら history は null のまま
+    }
+    if (!history || (history.games.length === 0 && history.seasonTotals.length === 0)) {
+      alert("このファイルは読み込めませんでした。\n過去の成績を変換したファイルを選んでください。");
+      return;
+    }
+    const message = `過去の成績（試合ごとの記録 ${history.games.length}試合など）を取り込みます。\n` +
+      "すでに取り込んだ過去の成績がある場合は、置き換わります。今の記録はそのままです。よろしいですか？";
+    if (!confirm(message)) return;
+    data.history = history;
+    saveData();
+    renderAll();
+    alert("過去の成績を取り込みました");
+  };
+  reader.readAsText(file);
+}
+
+// 「取り込んだ過去の成績を消す」ボタン
+function clearHistory() {
+  if (!confirm("取り込んだ過去の成績を消しますか？\n今の記録はそのままです。")) return;
+  data.history = normalizeHistory(null);
+  saveData();
+  renderAll();
 }
 
 // データをファイルにして、共有メニュー（スマホ）かダウンロード（パソコン）で渡す
@@ -802,6 +859,13 @@ $("export-button").addEventListener("click", () =>
 $("publish-button").addEventListener("click", () =>
   exportData("data.json", "成績公開用ファイル"));
 $("import-button").addEventListener("click", () => $("import-file").click());
+$("history-button").addEventListener("click", () => $("history-file").click());
+$("history-file").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) importHistory(file);
+  e.target.value = "";
+});
+$("history-clear").addEventListener("click", clearHistory);
 $("import-file").addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (file) importData(file);

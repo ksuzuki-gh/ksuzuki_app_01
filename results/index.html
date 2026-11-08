@@ -31,7 +31,8 @@
         <div class="card">
           <label>試合 <select id="game-select"></select></label>
           <h2 id="game-title"></h2>
-          <p class="legend">記号：数字＝打点　●＝得点　盗＝盗塁　（一番下の行は各回のチームの得点）</p>
+          <p id="sheet-legend" class="legend">記号：数字＝打点　●＝得点　盗＝盗塁　（一番下の行は各回のチームの得点）</p>
+          <p id="history-note" class="hint" hidden>この試合は回ごとの記録がないため、選手ごとの合計で表示しています</p>
           <div class="table-wrap">
             <table id="sheet-table"></table>
           </div>
@@ -70,7 +71,7 @@
           <dt>打席</dt><dd>打席に立った回数（すべて）</dd>
           <dt>打数</dt><dd>打席から四球・死球・犠打・犠飛を引いた数</dd>
           <dt>打率</dt><dd>安打 ÷ 打数</dd>
-          <dt>出塁率</dt><dd>（安打＋四球＋死球）÷（打数＋四球＋死球＋犠飛）</dd>
+          <dt>出塁率</dt><dd>（安打＋四死球）÷（打数＋四死球＋犠飛）<br>※2018〜2024年度の記録は、Excelの記録に合わせて犠打も割る数に入れています</dd>
           <dt>長打率</dt><dd>塁打数 ÷ 打数（単打1・二塁打2・三塁打3・本塁打4）</dd>
           <dt>OPS</dt><dd>出塁率＋長打率。打者の総合力の目安</dd>
           <dt>得点</dt><dd>ホームに還ってきた回数</dd>

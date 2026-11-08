@@ -4,7 +4,10 @@
 
 const $ = (id) => document.getElementById(id);
 
-let data = { players: [], games: [] };
+let data = normalizeData({ players: [], games: [] });
+
+// 試合結果のプルダウンに出す試合：今の記録の試合 ＋ 過去の試合（選手ごとの合計だけ）
+const allGames = () => [...data.games, ...data.history.games];
 
 // --- 並び順の種類 ---
 // key:  calcStats で計算した数字のどれで並べるか（null なら選手の登録順）
@@ -39,42 +42,50 @@ function switchTab(name) {
 
 // 試合結果
 function renderGame() {
-  const game = data.games.find((g) => g.id === $("game-select").value);
+  const id = $("game-select").value;
+  const live = data.games.find((g) => g.id === id);
+  const past = data.history.games.find((g) => g.id === id);
+  const game = live || past;
   if (!game) return;
   $("game-title").textContent = `${gameLabel(game)}（${seasonLabel(game.season)}）`;
-  // 見るだけなので、目立たせる回なし・タップもなし
-  renderSheetTable($("sheet-table"), game, data.players, null, null);
+  $("sheet-legend").hidden = !live;
+  $("history-note").hidden = !past;
+  if (live) {
+    // 見るだけなので、目立たせる回なし・タップもなし
+    renderSheetTable($("sheet-table"), live, data.players, null, null);
+  } else {
+    renderHistoryGameTable($("sheet-table"), past, data.players);
+  }
 }
 
-// 並び順に合わせて選手を並べかえる
-function sortPlayers(games, sortIndex) {
+// 並び順に合わせて行を並べかえる
+function sortRows(rows, sortIndex) {
   const key = SORTS[sortIndex].key;
-  if (key === null) return data.players;
-
-  const allAtBats = games.flatMap((g) => g.atBats);
-  const valueOf = (p) => calcStats(allAtBats.filter((a) => a.playerId === p.id))[key];
+  if (key === null) return rows;
   // 計算できない選手（打数0など）は一番下にする
-  return [...data.players].sort((a, b) => (valueOf(b) ?? -1) - (valueOf(a) ?? -1));
+  return [...rows].sort((a, b) => (b.totals[key] ?? -1) - (a.totals[key] ?? -1));
 }
 
 // シーズン
 function renderSeason() {
   const season = Number($("season-select").value);
-  const games = data.games.filter((g) => g.season === season);
-  $("season-info").textContent = `${seasonLabel(season)}（${season}年4月〜${season + 1}年3月）　${games.length}試合`;
-  const players = sortPlayers(games, Number($("season-sort").value));
-  renderStatsTable($("season-table"), games, players, true); // 打席がない選手は出さない
+  const collected = collectStats(data, { type: "season", season: season });
+  $("season-info").textContent =
+    `${seasonLabel(season)}（${season}年4月〜${season + 1}年3月）　${collected.team.games}試合`;
+  const rows = sortRows(collected.rows, Number($("season-sort").value));
+  renderStatsTable($("season-table"), collected, rows, true); // 打席がない選手は出さない
 }
 
 // 通算
 function renderCareer() {
-  const seasons = seasonsOf(data.games);
+  const seasons = allSeasons(data);
+  const collected = collectStats(data, { type: "all" });
   const range = seasons.length > 0
     ? `${seasonLabel(seasons[seasons.length - 1])}〜${seasonLabel(seasons[0])}`
     : "";
-  $("career-info").textContent = `全${data.games.length}試合　${range}`;
-  const players = sortPlayers(data.games, Number($("career-sort").value));
-  renderStatsTable($("career-table"), data.games, players, true);
+  $("career-info").textContent = `全${collected.team.games}試合　${range}`;
+  const rows = sortRows(collected.rows, Number($("career-sort").value));
+  renderStatsTable($("career-table"), collected, rows, true);
 }
 
 // =========================================================
@@ -82,12 +93,12 @@ function renderCareer() {
 // =========================================================
 function setupSelects() {
   // 試合（シーズンごとに分ける。一番新しい試合を選んでおく）
-  appendGameOptions($("game-select"), data.games);
-  const latest = sortGames(data.games)[0];
+  appendGameOptions($("game-select"), allGames());
+  const latest = sortGames(allGames())[0];
   if (latest) $("game-select").value = latest.id;
 
   // シーズン（新しい順）
-  for (const s of seasonsOf(data.games)) $("season-select").append(new Option(seasonLabel(s), s));
+  for (const s of allSeasons(data)) $("season-select").append(new Option(seasonLabel(s), s));
 
   // 並び順
   for (const id of ["season-sort", "career-sort"]) {
@@ -105,7 +116,8 @@ async function loadPublishedData() {
     if (!response.ok) throw new Error("data.json が見つかりません");
     const json = await response.json();
     const loaded = normalizeData(json.data ?? json);
-    if (!loaded || loaded.games.length === 0) throw new Error("試合の記録がありません");
+    if (!loaded || (loaded.games.length === 0 && loaded.history.games.length === 0 &&
+      loaded.history.seasonTotals.length === 0)) throw new Error("試合の記録がありません");
     data = loaded;
 
     // いつの記録か（書き出した日時）を表示する

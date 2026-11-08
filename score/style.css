@@ -512,3 +512,12 @@ code {
   background: #f0f0f0;
   font-size: 0.9em;
 }
+
+/* ===== 過去の成績 ===== */
+.pre-line {
+  white-space: pre-line; /* 文章の中の改行をそのまま表示 */
+}
+
+.clear-history {
+  margin-top: 12px;
+}
