@@ -2,34 +2,48 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <!-- スマホの画面幅に合わせて表示するための設定 -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>かんたんメモ帳</title>
-  <link rel="stylesheet" href="style.css">
+  <title>アプリ一覧</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      background: #f5f5f0;
+      color: #333;
+    }
+    main {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+    h1 {
+      font-size: 1.3rem;
+    }
+    a {
+      display: block;
+      background: white;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
+      color: #333;
+      text-decoration: none;
+      font-size: 1.1rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    small {
+      display: block;
+      margin-top: 4px;
+      color: #888;
+      font-size: 0.85rem;
+    }
+  </style>
 </head>
 <body>
-  <header>
-    <h1>📝 かんたんメモ帳</h1>
-  </header>
-
   <main>
-    <!-- メモを書く場所 -->
-    <section class="editor">
-      <textarea id="memo-input" placeholder="ここにメモを書いてください"></textarea>
-      <div class="buttons">
-        <button id="cancel-button" class="secondary" hidden>キャンセル</button>
-        <button id="save-button">保存</button>
-      </div>
-    </section>
-
-    <!-- 保存したメモの一覧 -->
-    <section>
-      <h2>保存したメモ（<span id="memo-count">0</span>件）</h2>
-      <p id="empty-message" class="empty">まだメモはありません</p>
-      <ul id="memo-list"></ul>
-    </section>
+    <h1>アプリ一覧</h1>
+    <!-- 新しいアプリを作ったら、ここにリンクを追加する -->
+    <a href="memo/">📝 かんたんメモ帳<small>メモを書いて保存</small></a>
+    <a href="score/">⚾ 打撃成績スコアシート<small>ソフトボールの打撃成績を記録・集計</small></a>
   </main>
-
-  <script src="app.js"></script>
 </body>
 </html>

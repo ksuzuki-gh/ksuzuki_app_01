@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>打撃成績スコアシート</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>⚾ 打撃成績スコアシート</h1>
+    <!-- 画面を切りかえるタブ -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="game">試合入力</button>
+      <button class="tab" data-tab="stats">成績</button>
+      <button class="tab" data-tab="players">選手</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ===== タブ1：試合入力 ===== -->
+    <section id="tab-game" class="tab-page">
+      <p id="no-player-message" class="notice" hidden>
+        まず「選手」タブで選手を登録してください。
+      </p>
+
+      <!-- 試合を選ぶ／作る -->
+      <div class="card">
+        <h2>試合</h2>
+        <div class="row">
+          <select id="game-select"></select>
+          <button id="new-game-button" class="small">＋新しい試合</button>
+        </div>
+
+        <!-- 新しい試合の入力欄（ふだんは隠れている） -->
+        <div id="new-game-form" class="sub-form" hidden>
+          <label>日付 <input type="date" id="game-date"></label>
+          <label>対戦相手 <input type="text" id="game-opponent" placeholder="例：ホワイトベアーズ"></label>
+          <div class="buttons">
+            <button id="new-game-cancel" class="secondary small">キャンセル</button>
+            <button id="new-game-save" class="small">作成</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 打席結果の入力 -->
+      <div id="input-card" class="card" hidden>
+        <h2>打席結果を入力</h2>
+        <label>打者 <select id="batter-select"></select></label>
+
+        <p class="label">結果</p>
+        <div id="result-buttons"></div>
+
+        <p class="label">打点</p>
+        <div id="rbi-buttons" class="choice-row"></div>
+
+        <button id="record-button" class="wide">記録する</button>
+      </div>
+
+      <!-- この試合のスコアシート -->
+      <div id="sheet-card" class="card" hidden>
+        <h2>スコアシート</h2>
+        <p class="hint">記録をタップすると取り消せます</p>
+        <div class="table-wrap">
+          <table id="sheet-table"></table>
+        </div>
+        <p id="sheet-empty" class="empty">まだ記録がありません</p>
+        <button id="delete-game-button" class="danger small">この試合を削除</button>
+      </div>
+    </section>
+
+    <!-- ===== タブ2：成績 ===== -->
+    <section id="tab-stats" class="tab-page" hidden>
+      <div class="card">
+        <h2>打撃成績</h2>
+        <label>集計する試合 <select id="stats-filter"></select></label>
+        <div class="table-wrap">
+          <table id="stats-table"></table>
+        </div>
+        <p class="hint">表は横にスクロールできます</p>
+      </div>
+
+      <div class="card">
+        <h2>用語の説明</h2>
+        <dl class="glossary">
+          <dt>打席</dt><dd>打席に立った回数（すべて）</dd>
+          <dt>打数</dt><dd>打席から四球・死球・犠打・犠飛を引いた数</dd>
+          <dt>打率</dt><dd>安打 ÷ 打数</dd>
+          <dt>出塁率</dt><dd>（安打＋四球＋死球）÷（打数＋四球＋死球＋犠飛）</dd>
+          <dt>長打率</dt><dd>塁打数 ÷ 打数（単打1・二塁打2・三塁打3・本塁打4）</dd>
+          <dt>OPS</dt><dd>出塁率＋長打率。打者の総合力の目安</dd>
+        </dl>
+      </div>
+    </section>
+
+    <!-- ===== タブ3：選手 ===== -->
+    <section id="tab-players" class="tab-page" hidden>
+      <div class="card">
+        <h2>選手を登録</h2>
+        <div class="row">
+          <input type="text" id="player-number" inputmode="numeric" placeholder="背番号" class="number-input">
+          <input type="text" id="player-name" placeholder="名前">
+          <button id="add-player-button" class="small">追加</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>選手一覧（打順）</h2>
+        <p class="hint">↑↓で打順を変えられます。記録すると次の打者に自動で進みます</p>
+        <ul id="player-list"></ul>
+        <p id="player-empty" class="empty">まだ選手がいません</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
