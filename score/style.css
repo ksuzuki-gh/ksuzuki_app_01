@@ -406,3 +406,76 @@ label.check input {
   border: none;
   padding: 0;
 }
+
+/* ===== タブが5つになったので文字を少し小さく ===== */
+.tab {
+  font-size: 0.85rem;
+}
+
+/* ===== 打者と代打ボタン ===== */
+.batter-row {
+  margin-bottom: 10px;
+}
+
+/* ===== オーダー ===== */
+.slot {
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.slot-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slot-head select {
+  flex: 1;
+  min-width: 0;
+}
+
+.slot-no {
+  min-width: 42px;
+  font-weight: bold;
+  color: #2f6b3a;
+}
+
+ul.slot-history {
+  margin: 6px 0 0 50px;
+}
+
+ul.slot-history li {
+  display: block;
+  border: none;
+  padding: 2px 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.slot-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.order-buttons {
+  margin-top: 12px;
+}
+
+button:disabled {
+  opacity: 0.4;
+}
+
+/* ===== スコアシートの交代・退場の行 ===== */
+td.sub-name {
+  padding-left: 18px;
+  color: #555;
+  font-size: 0.85rem;
+}
+
+tr.ejected-row td {
+  color: #d64545;
+  font-size: 0.85rem;
+  background: #fdf3f3;
+}

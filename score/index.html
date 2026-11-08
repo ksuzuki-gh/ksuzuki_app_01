@@ -12,6 +12,7 @@
     <!-- 画面を切りかえるタブ -->
     <nav class="tabs">
       <button class="tab active" data-tab="game">試合入力</button>
+      <button class="tab" data-tab="order">オーダー</button>
       <button class="tab" data-tab="stats">成績</button>
       <button class="tab" data-tab="players">選手</button>
       <button class="tab" data-tab="data">データ</button>
@@ -23,6 +24,9 @@
     <section id="tab-game" class="tab-page">
       <p id="no-player-message" class="notice" hidden>
         まず「選手」タブで選手を登録してください。
+      </p>
+      <p id="no-lineup-message" class="notice" hidden>
+        この試合のオーダー（打順）に、打てる選手がいません。「オーダー」タブで設定してください。
       </p>
 
       <!-- 試合を選ぶ／作る -->
@@ -55,7 +59,11 @@
           <button id="inning-next" class="secondary">▶</button>
         </div>
 
-        <label>打者 <select id="batter-select"></select></label>
+        <label>打者</label>
+        <div class="row batter-row">
+          <select id="batter-select"></select>
+          <button id="pinch-button" class="small secondary">代打</button>
+        </div>
 
         <p class="label">結果</p>
         <div id="result-buttons"></div>
@@ -76,6 +84,26 @@
           <table id="sheet-table"></table>
         </div>
         <button id="delete-game-button" class="danger small">この試合を削除</button>
+      </div>
+    </section>
+
+    <!-- ===== タブ：オーダー（打順） ===== -->
+    <section id="tab-order" class="tab-page" hidden>
+      <p id="order-no-game" class="notice" hidden>
+        まず「試合入力」タブで試合を作ってください。
+      </p>
+      <div id="order-card" class="card" hidden>
+        <h2>オーダー：<span id="order-game"></span></h2>
+        <p class="hint">
+          打順ごとに先発の選手を選びます。途中で代打が出たら「代打・交代」、退場したら「退場」を押します。
+          「取消」で最後の変更を元に戻せます。退場で空いた打順は、打席が回ってきても飛ばされます。
+        </p>
+        <div id="order-area"></div>
+        <div class="buttons order-buttons">
+          <button id="remove-slot" class="small secondary">－ 最後の打順を削除</button>
+          <button id="add-slot" class="small">＋ 打順を追加</button>
+        </div>
+        <button id="go-input" class="wide">試合入力へ</button>
       </div>
     </section>
 
@@ -117,8 +145,8 @@
       </div>
 
       <div class="card">
-        <h2>選手一覧（打順）</h2>
-        <p class="hint">↑↓で打順を変えられます。記録すると次の打者に自動で進みます</p>
+        <h2>選手一覧</h2>
+        <p class="hint">↑↓で並べ替えられます。この並び順が、最初の試合のオーダーになります（2試合目からは、前の試合の先発オーダーを引き継ぎます）</p>
         <ul id="player-list"></ul>
         <p id="player-empty" class="empty">まだ選手がいません</p>
       </div>
@@ -158,6 +186,17 @@
       </div>
     </section>
   </main>
+
+  <!-- 代打・交代の選手を選ぶ小さな画面 -->
+  <dialog id="sub-dialog">
+    <h2 id="sub-title"></h2>
+    <label>代わりに入る選手 <select id="sub-player"></select></label>
+    <label>何回から <select id="sub-inning"></select></label>
+    <div class="buttons">
+      <button id="sub-cancel" class="secondary small">閉じる</button>
+      <button id="sub-save" class="small">交代する</button>
+    </div>
+  </dialog>
 
   <!-- 打席の記録を直すための小さな画面 -->
   <dialog id="edit-dialog">
