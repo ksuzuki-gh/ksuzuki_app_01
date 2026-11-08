@@ -479,3 +479,36 @@ tr.ejected-row td {
   font-size: 0.85rem;
   background: #fdf3f3;
 }
+
+/* ===== シーズン・試合情報 ===== */
+.form-title {
+  margin: 0 0 10px;
+  font-weight: bold;
+}
+
+.season-badge {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #e3f4e6;
+  color: #1d6b2c;
+  font-size: 0.8rem;
+  font-weight: normal;
+}
+
+.game-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+#delete-game-button {
+  margin-top: 0;
+}
+
+code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #f0f0f0;
+  font-size: 0.9em;
+}
