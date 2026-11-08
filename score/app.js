@@ -3,12 +3,17 @@
 //
 // 保存するデータの形：
 // {
-//   players: [ { id, number, name } ],                 ← 選手（並び順＝打順）
-//   games:   [ { id, date, opponent,
-//                atBats: [ { id, playerId, result, rbi } ] } ]  ← 試合と打席
+//   players: [ { id, number, name } ],        ← 選手（並び順＝打順）
+//   games:   [ { id, date, opponent, atBats } ] ← 試合
 // }
+// atBats（打席）の1つ分：
+//   { id, playerId, inning（回）, result（結果）, rbi（打点）, run（得点したか）, sb（盗塁数） }
 
 const STORAGE_KEY = "softball-score";
+const MIN_INNINGS = 7;  // ソフトボールは7回までなので、表は最低7回分つくる
+const MAX_INNING = 15;  // 延長は15回まで入力できる
+const MAX_RBI = 4;
+const MAX_SB = 3;
 
 // --- 打席結果の種類 ---
 // ab:    打数に数えるか（四球・死球・犠打・犠飛は数えない）
@@ -30,35 +35,17 @@ const RESULTS = {
   sacFly:    { label: "犠飛",   short: "犠飛", ab: false, bases: 0, kind: "out" },
 };
 
-// --- アプリの状態 ---
-let data = loadData();      // 保存されているデータ
-let currentGameId = null;   // いま選んでいる試合
-let selectedResult = null;  // 選んでいる打席結果
-let selectedRbi = 0;        // 選んでいる打点
-
 // 画面の部品を取り出す（$ は「idで探す」の短縮形）
 const $ = (id) => document.getElementById(id);
 
-// =========================================================
-// 保存と読み込み
-// =========================================================
-function loadData() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (saved && saved.players && saved.games) return saved;
-  } catch (e) {
-    // 読めなかったときは下の「空っぽのデータ」を使う
-  }
-  return { players: [], games: [] };
-}
-
-function saveData() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {
-    alert("保存できませんでした（プライベートモードなどでは保存できないことがあります）");
-  }
-}
+// --- アプリの状態 ---
+let data = loadData();        // 保存されているデータ
+let currentGameId = null;     // いま選んでいる試合
+let currentInning = 1;        // いま入力している回
+let currentBatterId = null;   // いま選んでいる打者
+let selectedResult = null;    // 選んでいる打席結果
+let selectedRbi = 0;          // 選んでいる打点
+let editing = null;           // 直している打席 { game, atBat }
 
 // =========================================================
 // 小さな便利関数
@@ -82,6 +69,13 @@ function today() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// 整数を min〜max の範囲におさめる（数字でなければ def を使う）
+function clampInt(value, min, max, def) {
+  const n = Number(value);
+  if (!Number.isInteger(n)) return def;
+  return Math.min(max, Math.max(min, n));
 }
 
 // 率を「.333」の形にする（野球の表示方法）
@@ -112,12 +106,74 @@ function sortedGames() {
   return [...data.games].sort((a, b) => b.date.localeCompare(a.date));
 }
 
+// 打順で「次の打者」のIDを返す（最後の打者の次は1番に戻る）
+function nextPlayerId(playerId) {
+  if (data.players.length === 0) return null;
+  const index = data.players.findIndex((p) => p.id === playerId);
+  return data.players[(index + 1) % data.players.length].id;
+}
+
+// =========================================================
+// 保存と読み込み
+// =========================================================
+
+// データの形を整える。
+// 古い形のデータ（回・得点・盗塁がない）や、バックアップファイルの中身を
+// このアプリで使える形にそろえる。使えないデータなら null を返す。
+function normalizeData(raw) {
+  if (!raw || !Array.isArray(raw.players) || !Array.isArray(raw.games)) return null;
+
+  const players = raw.players
+    .filter((p) => p && p.id && typeof p.name === "string")
+    .map((p) => ({ id: String(p.id), number: String(p.number ?? ""), name: p.name }));
+
+  const games = raw.games
+    .filter((g) => g && g.id)
+    .map((g) => ({
+      id: String(g.id),
+      date: typeof g.date === "string" && g.date ? g.date : today(),
+      opponent: String(g.opponent ?? ""),
+      atBats: (Array.isArray(g.atBats) ? g.atBats : [])
+        .filter((a) => a && Object.hasOwn(RESULTS, a.result)) // 知らない結果は捨てる
+        .map((a) => ({
+          id: String(a.id ?? newId()),
+          playerId: String(a.playerId),
+          inning: clampInt(a.inning, 1, MAX_INNING, 1), // 回がない古い記録は1回にする
+          result: a.result,
+          rbi: clampInt(a.rbi, 0, MAX_RBI, 0),
+          run: a.run === true,
+          sb: clampInt(a.sb, 0, MAX_SB, 0),
+        })),
+    }));
+
+  return { players, games };
+}
+
+function loadData() {
+  try {
+    const saved = normalizeData(JSON.parse(localStorage.getItem(STORAGE_KEY)));
+    if (saved) return saved;
+  } catch (e) {
+    // 読めなかったときは下の「空っぽのデータ」を使う
+  }
+  return { players: [], games: [] };
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    alert("保存できませんでした（プライベートモードなどでは保存できないことがあります）");
+  }
+}
+
 // =========================================================
 // 成績の計算
 // =========================================================
 // atBats（打席の記録の配列）から、各種の数字を計算する
 function calcStats(atBats) {
-  const s = { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, tb: 0, rbi: 0, bb: 0, hbp: 0, so: 0, sf: 0 };
+  const s = { pa: 0, ab: 0, h: 0, d: 0, t: 0, hr: 0, tb: 0, rbi: 0, r: 0, sb: 0,
+    bb: 0, hbp: 0, so: 0, sf: 0 };
 
   for (const atBat of atBats) {
     const r = RESULTS[atBat.result];
@@ -129,6 +185,8 @@ function calcStats(atBats) {
     if (r.bases === 4) s.hr += 1;      // 本塁打
     s.tb += r.bases;                   // 塁打数
     s.rbi += atBat.rbi;                // 打点
+    if (atBat.run) s.r += 1;           // 得点
+    s.sb += atBat.sb;                  // 盗塁
     if (atBat.result === "walk") s.bb += 1;
     if (atBat.result === "hbp") s.hbp += 1;
     if (atBat.result === "strikeout") s.so += 1;
@@ -161,6 +219,20 @@ function switchTab(name) {
 // タブ1：試合入力
 // =========================================================
 
+// 試合を選ぶ。回と打者は「その試合の続き」から始める
+function selectGame(id) {
+  const game = findGame(id) || sortedGames()[0] || null;
+  currentGameId = game ? game.id : null;
+  if (!game || game.atBats.length === 0) {
+    currentInning = 1;
+    currentBatterId = data.players.length > 0 ? data.players[0].id : null;
+    return;
+  }
+  const last = game.atBats[game.atBats.length - 1];
+  currentInning = Math.max(...game.atBats.map((a) => a.inning));
+  currentBatterId = nextPlayerId(last.playerId);
+}
+
 // 試合を選ぶプルダウンを作る
 function renderGameSelect() {
   const select = $("game-select");
@@ -170,32 +242,32 @@ function renderGameSelect() {
   if (games.length === 0) {
     select.append(new Option("試合がありません", ""));
     select.disabled = true;
-    currentGameId = null;
     return;
   }
-
   select.disabled = false;
   for (const g of games) select.append(new Option(gameLabel(g), g.id));
-
-  // 選んでいた試合がなければ、いちばん新しい試合を選ぶ
-  if (!findGame(currentGameId)) currentGameId = games[0].id;
   select.value = currentGameId;
 }
 
-// 打者のプルダウン・結果ボタン・打点ボタンを作る
+// 回・打者・結果ボタン・打点ボタンを作る
 function renderInput() {
   const hasPlayers = data.players.length > 0;
   $("no-player-message").hidden = hasPlayers;
   $("input-card").hidden = !(hasPlayers && currentGameId);
 
-  // 打者のプルダウン（選んでいた打者はそのまま残す）
+  // 回
+  $("inning-label").textContent = `${currentInning}回`;
+  $("inning-prev").disabled = currentInning <= 1;
+  $("inning-next").disabled = currentInning >= MAX_INNING;
+
+  // 打者のプルダウン
   const batter = $("batter-select");
-  const before = batter.value;
   batter.innerHTML = "";
   data.players.forEach((p, i) => {
     batter.append(new Option(`${i + 1}番 ${playerLabel(p)}`, p.id));
   });
-  if (findPlayer(before)) batter.value = before;
+  if (!findPlayer(currentBatterId)) currentBatterId = hasPlayers ? data.players[0].id : null;
+  if (currentBatterId) batter.value = currentBatterId;
 
   // 結果ボタン（種類ごとに1段ずつ並べる）
   const area = $("result-buttons");
@@ -218,7 +290,7 @@ function renderInput() {
   // 打点ボタン（0〜4）
   const rbiArea = $("rbi-buttons");
   rbiArea.innerHTML = "";
-  for (let n = 0; n <= 4; n++) {
+  for (let n = 0; n <= MAX_RBI; n++) {
     const button = el("button", "choice", String(n));
     if (n === selectedRbi) button.classList.add("selected");
     button.addEventListener("click", () => {
@@ -229,76 +301,99 @@ function renderInput() {
   }
 }
 
-// この試合のスコアシート（表）を作る
+// 打席の記録を短い文字にする（例：「本2●」＝本塁打・2打点・得点）
+function chipText(atBat) {
+  let text = RESULTS[atBat.result].short;
+  if (atBat.rbi > 0) text += atBat.rbi;
+  if (atBat.run) text += "●";
+  if (atBat.sb > 0) text += atBat.sb > 1 ? `盗${atBat.sb}` : "盗";
+  return text;
+}
+
+// この試合のスコアシート（スコアブック形式の表）を作る
 function renderSheet() {
   const game = findGame(currentGameId);
-  $("sheet-card").hidden = !game;
-  if (!game) return;
+  $("sheet-card").hidden = !game || data.players.length === 0;
+  if ($("sheet-card").hidden) return;
 
   const table = $("sheet-table");
   table.innerHTML = "";
 
-  // 記録がある選手だけを、打順どおりに並べる
-  const rows = data.players.filter((p) => game.atBats.some((a) => a.playerId === p.id));
-  $("sheet-empty").hidden = rows.length > 0;
-  if (rows.length === 0) return;
+  // 表の回の数：最低7回。延長や、いま入力中の回があればそこまで広げる
+  const innings = Math.max(MIN_INNINGS, currentInning, ...game.atBats.map((a) => a.inning));
+  const inningList = Array.from({ length: innings }, (_, i) => i + 1); // [1, 2, ..., innings]
 
+  // 見出しの行
   const head = el("tr");
-  for (const title of ["選手", "打席結果", "打数", "安打", "打点"]) head.append(el("th", "", title));
+  head.append(el("th", "", "選手"));
+  for (const n of inningList) head.append(el("th", n === currentInning ? "current" : "", n));
+  for (const title of ["打数", "安打", "打点", "得点", "盗塁"]) head.append(el("th", "", title));
   table.append(head);
 
-  for (const p of rows) {
+  // 選手ごとの行（打順どおり）
+  for (const p of data.players) {
     const atBats = game.atBats.filter((a) => a.playerId === p.id);
-    const s = calcStats(atBats);
     const tr = el("tr");
     tr.append(el("td", "", playerLabel(p)));
 
-    // 打席結果をボタン（チップ）で並べる。タップで取り消し
-    const chips = el("td", "chips");
-    for (const atBat of atBats) {
-      const r = RESULTS[atBat.result];
-      const text = atBat.rbi > 0 ? `${r.short}${atBat.rbi}` : r.short; // 打点があれば数字を付ける
-      const chip = el("button", `chip kind-${r.kind}`, text);
-      chip.addEventListener("click", () => deleteAtBat(game, atBat, p));
-      chips.append(chip);
+    // 回ごとのマス。打席の記録をボタン（チップ）で入れる。タップで直せる
+    for (const n of inningList) {
+      const td = el("td", n === currentInning ? "cell current" : "cell");
+      for (const atBat of atBats.filter((a) => a.inning === n)) {
+        const chip = el("button", `chip kind-${RESULTS[atBat.result].kind}`, chipText(atBat));
+        chip.addEventListener("click", () => openEdit(game, atBat));
+        td.append(chip);
+      }
+      tr.append(td);
     }
-    tr.append(chips);
 
-    tr.append(el("td", "", s.ab), el("td", "", s.h), el("td", "", s.rbi));
+    const s = calcStats(atBats);
+    for (const v of [s.ab, s.h, s.rbi, s.r, s.sb]) tr.append(el("td", "", v));
     table.append(tr);
   }
+
+  // 一番下の行：各回のチームの得点と合計
+  const total = el("tr", "total");
+  total.append(el("td", "", "合計"));
+  for (const n of inningList) {
+    const runs = game.atBats.filter((a) => a.inning === n && a.run).length;
+    total.append(el("td", n === currentInning ? "current" : "", runs));
+  }
+  const s = calcStats(game.atBats);
+  for (const v of [s.ab, s.h, s.rbi, s.r, s.sb]) total.append(el("td", "", v));
+  table.append(total);
+}
+
+// 「◀」「▶」ボタンで回を変える
+function changeInning(step) {
+  currentInning = clampInt(currentInning + step, 1, MAX_INNING, 1);
+  renderAll();
 }
 
 // 「記録する」ボタン
 function recordAtBat() {
   const game = findGame(currentGameId);
-  const playerId = $("batter-select").value;
-  if (!game || !playerId) return;
+  if (!game || !currentBatterId) return;
   if (!selectedResult) {
     alert("結果を選んでください");
     return;
   }
 
-  game.atBats.push({ id: newId(), playerId: playerId, result: selectedResult, rbi: selectedRbi });
+  game.atBats.push({
+    id: newId(),
+    playerId: currentBatterId,
+    inning: currentInning,
+    result: selectedResult,
+    rbi: selectedRbi,
+    run: selectedResult === "homerun", // 本塁打なら自動で得点
+    sb: 0,
+  });
   saveData();
 
-  // 次の打者に進める（最後の打者の次は1番に戻る）
-  const index = data.players.findIndex((p) => p.id === playerId);
-  const next = data.players[(index + 1) % data.players.length];
-  $("batter-select").value = next.id;
-
-  // 選んでいた結果・打点をリセット
+  // 次の打者に進め、選んでいた結果・打点をリセット
+  currentBatterId = nextPlayerId(currentBatterId);
   selectedResult = null;
   selectedRbi = 0;
-  renderAll();
-}
-
-// スコアシートのチップをタップしたとき
-function deleteAtBat(game, atBat, player) {
-  const label = RESULTS[atBat.result].label;
-  if (!confirm(`${player.name}の「${label}」を取り消しますか？`)) return;
-  game.atBats = game.atBats.filter((a) => a.id !== atBat.id);
-  saveData();
   renderAll();
 }
 
@@ -320,8 +415,7 @@ function createGame() {
   const game = { id: newId(), date: date, opponent: opponent, atBats: [] };
   data.games.push(game);
   saveData();
-  currentGameId = game.id;
-  if (data.players.length > 0) $("batter-select").value = data.players[0].id; // 1番打者から
+  selectGame(game.id); // 1回・1番打者から始まる
   closeNewGameForm();
   renderAll();
 }
@@ -333,7 +427,62 @@ function deleteGame() {
   if (!confirm(`「${gameLabel(game)}」を削除しますか？\nこの試合の記録もすべて消えます。`)) return;
   data.games = data.games.filter((g) => g.id !== game.id);
   saveData();
-  currentGameId = null;
+  selectGame(null);
+  renderAll();
+}
+
+// =========================================================
+// 打席の記録を直す画面
+// =========================================================
+
+// プルダウンの選択肢を作る（最初に1回だけ）
+function setupEditOptions() {
+  for (let n = 1; n <= MAX_INNING; n++) $("edit-inning").append(new Option(`${n}回`, n));
+  for (const [key, r] of Object.entries(RESULTS)) $("edit-result").append(new Option(r.label, key));
+  for (let n = 0; n <= MAX_RBI; n++) $("edit-rbi").append(new Option(n, n));
+  for (let n = 0; n <= MAX_SB; n++) $("edit-sb").append(new Option(n, n));
+}
+
+// スコアシートの記録をタップしたとき
+function openEdit(game, atBat) {
+  editing = { game, atBat };
+  const player = findPlayer(atBat.playerId);
+  $("edit-title").textContent = `${player ? player.name : ""} の打席`;
+  $("edit-inning").value = atBat.inning;
+  $("edit-result").value = atBat.result;
+  $("edit-rbi").value = atBat.rbi;
+  $("edit-run").checked = atBat.run;
+  $("edit-sb").value = atBat.sb;
+  $("edit-dialog").showModal();
+}
+
+function closeEdit() {
+  editing = null;
+  $("edit-dialog").close();
+}
+
+// 「保存」ボタン
+function saveEdit() {
+  if (!editing) return;
+  const atBat = editing.atBat;
+  atBat.inning = Number($("edit-inning").value);
+  atBat.result = $("edit-result").value;
+  atBat.rbi = Number($("edit-rbi").value);
+  atBat.run = $("edit-run").checked;
+  atBat.sb = Number($("edit-sb").value);
+  saveData();
+  closeEdit();
+  renderAll();
+}
+
+// 「削除」ボタン
+function deleteEdit() {
+  if (!editing) return;
+  if (!confirm("この打席の記録を削除しますか？")) return;
+  const { game, atBat } = editing;
+  game.atBats = game.atBats.filter((a) => a.id !== atBat.id);
+  saveData();
+  closeEdit();
   renderAll();
 }
 
@@ -356,7 +505,7 @@ function renderStats() {
   table.innerHTML = "";
   // 打率はよく見るので、選手名のすぐ右に置く
   const columns = ["選手", "打率", "試合", "打席", "打数", "安打", "二塁打", "三塁打", "本塁打",
-    "打点", "四球", "死球", "三振", "出塁率", "長打率", "OPS"];
+    "打点", "得点", "盗塁", "四球", "死球", "三振", "出塁率", "長打率", "OPS"];
   const head = el("tr");
   for (const title of columns) head.append(el("th", "", title));
   table.append(head);
@@ -364,8 +513,8 @@ function renderStats() {
   // 1行分の数字を表に追加する
   const addRow = (name, gameCount, s, className) => {
     const tr = el("tr", className);
-    const values = [name, formatRate(s.avg), gameCount, s.pa, s.ab, s.h, s.d, s.t, s.hr, s.rbi, s.bb, s.hbp, s.so,
-      formatRate(s.obp), formatRate(s.slg), formatRate(s.ops)];
+    const values = [name, formatRate(s.avg), gameCount, s.pa, s.ab, s.h, s.d, s.t, s.hr,
+      s.rbi, s.r, s.sb, s.bb, s.hbp, s.so, formatRate(s.obp), formatRate(s.slg), formatRate(s.ops)];
     for (const v of values) tr.append(el("td", "", v));
     table.append(tr);
   };
@@ -444,14 +593,84 @@ function deletePlayer(player) {
 }
 
 // =========================================================
+// タブ4：データ（バックアップ）
+// =========================================================
+function renderDataSummary() {
+  const atBatCount = data.games.reduce((sum, g) => sum + g.atBats.length, 0);
+  $("data-summary").textContent =
+    `選手 ${data.players.length}人 ／ 試合 ${data.games.length}件 ／ 打席 ${atBatCount}件`;
+}
+
+// 「ファイルに書き出す」ボタン
+async function exportData() {
+  // データを文字（JSON という形式）にして、ファイルを作る
+  const content = JSON.stringify(
+    { app: "softball-score", exportedAt: new Date().toISOString(), data: data }, null, 2);
+  const fileName = `softball-score-${today()}.json`;
+  const file = new File([content], fileName, { type: "application/json" });
+
+  // スマホなら「共有」メニューを出す（メール・LINE・ドライブなどに送れる）
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: "打撃成績のバックアップ" });
+      return;
+    } catch (e) {
+      if (e.name === "AbortError") return; // 共有メニューを閉じたときは何もしない
+      // それ以外の失敗は、下のダウンロードに切りかえる
+    }
+  }
+
+  // 共有ができないとき（パソコンなど）は、ファイルとしてダウンロードする
+  const url = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ファイルが選ばれたとき
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let imported = null;
+    try {
+      const json = JSON.parse(reader.result);
+      imported = normalizeData(json.data ?? json);
+    } catch (e) {
+      // 読めないファイルなら imported は null のまま
+    }
+    if (!imported) {
+      alert("このファイルは読み込めませんでした。\nこのアプリで書き出したファイルを選んでください。");
+      return;
+    }
+
+    const message = `選手 ${imported.players.length}人・試合 ${imported.games.length}件 の記録を読み込みます。\n` +
+      "今このスマホにある記録は、すべて置き換わります。よろしいですか？";
+    if (!confirm(message)) return;
+
+    data = imported;
+    saveData();
+    selectGame(null);
+    renderAll();
+    alert("読み込みました");
+  };
+  reader.readAsText(file);
+}
+
+// =========================================================
 // 画面全体を作り直す
 // =========================================================
 function renderAll() {
+  if (!findGame(currentGameId)) selectGame(null);
   renderGameSelect();
   renderInput();
   renderSheet();
   renderStats();
   renderPlayers();
+  renderDataSummary();
 }
 
 // =========================================================
@@ -461,17 +680,41 @@ document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => switchTab(tab.dataset.tab));
 });
 
+// 試合入力
 $("game-select").addEventListener("change", (e) => {
-  currentGameId = e.target.value;
+  selectGame(e.target.value);
   renderAll();
 });
 $("new-game-button").addEventListener("click", openNewGameForm);
 $("new-game-cancel").addEventListener("click", closeNewGameForm);
 $("new-game-save").addEventListener("click", createGame);
+$("inning-prev").addEventListener("click", () => changeInning(-1));
+$("inning-next").addEventListener("click", () => changeInning(1));
+$("batter-select").addEventListener("change", (e) => {
+  currentBatterId = e.target.value;
+});
 $("record-button").addEventListener("click", recordAtBat);
 $("delete-game-button").addEventListener("click", deleteGame);
+
+// 打席を直す画面
+$("edit-save").addEventListener("click", saveEdit);
+$("edit-cancel").addEventListener("click", closeEdit);
+$("edit-delete").addEventListener("click", deleteEdit);
+
+// 成績・選手
 $("stats-filter").addEventListener("change", renderStats);
 $("add-player-button").addEventListener("click", addPlayer);
 
+// データ
+$("export-button").addEventListener("click", exportData);
+$("import-button").addEventListener("click", () => $("import-file").click());
+$("import-file").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) importData(file);
+  e.target.value = ""; // 同じファイルをもう一度選べるように空にしておく
+});
+
 // 最初に一回、画面を作る
+setupEditOptions();
+selectGame(null);
 renderAll();

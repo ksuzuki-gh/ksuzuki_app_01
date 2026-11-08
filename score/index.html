@@ -14,6 +14,7 @@
       <button class="tab active" data-tab="game">試合入力</button>
       <button class="tab" data-tab="stats">成績</button>
       <button class="tab" data-tab="players">選手</button>
+      <button class="tab" data-tab="data">データ</button>
     </nav>
   </header>
 
@@ -46,6 +47,14 @@
       <!-- 打席結果の入力 -->
       <div id="input-card" class="card" hidden>
         <h2>打席結果を入力</h2>
+
+        <!-- 何回の攻撃か -->
+        <div class="inning-row">
+          <button id="inning-prev" class="secondary">◀</button>
+          <span id="inning-label">1回</span>
+          <button id="inning-next" class="secondary">▶</button>
+        </div>
+
         <label>打者 <select id="batter-select"></select></label>
 
         <p class="label">結果</p>
@@ -55,16 +64,17 @@
         <div id="rbi-buttons" class="choice-row"></div>
 
         <button id="record-button" class="wide">記録する</button>
+        <p class="hint after-button">得点・盗塁は、下のスコアシートの記録をタップして後から付けます（本塁打は自動で得点になります）</p>
       </div>
 
       <!-- この試合のスコアシート -->
       <div id="sheet-card" class="card" hidden>
         <h2>スコアシート</h2>
-        <p class="hint">記録をタップすると取り消せます</p>
+        <p class="hint">記録をタップすると、得点・盗塁を付けたり、直したり、取り消したりできます</p>
+        <p class="legend">記号：数字＝打点　●＝得点　盗＝盗塁　（一番下の行は各回のチームの得点）</p>
         <div class="table-wrap">
           <table id="sheet-table"></table>
         </div>
-        <p id="sheet-empty" class="empty">まだ記録がありません</p>
         <button id="delete-game-button" class="danger small">この試合を削除</button>
       </div>
     </section>
@@ -89,6 +99,8 @@
           <dt>出塁率</dt><dd>（安打＋四球＋死球）÷（打数＋四球＋死球＋犠飛）</dd>
           <dt>長打率</dt><dd>塁打数 ÷ 打数（単打1・二塁打2・三塁打3・本塁打4）</dd>
           <dt>OPS</dt><dd>出塁率＋長打率。打者の総合力の目安</dd>
+          <dt>得点</dt><dd>ホームに還ってきた回数</dd>
+          <dt>盗塁</dt><dd>盗塁に成功した回数</dd>
         </dl>
       </div>
     </section>
@@ -111,7 +123,56 @@
         <p id="player-empty" class="empty">まだ選手がいません</p>
       </div>
     </section>
+
+    <!-- ===== タブ4：データ（バックアップ） ===== -->
+    <section id="tab-data" class="tab-page" hidden>
+      <div class="card">
+        <h2>今の記録</h2>
+        <p id="data-summary"></p>
+      </div>
+
+      <div class="card">
+        <h2>記録を書き出す（バックアップ）</h2>
+        <p>選手・試合・打席のすべての記録を、1つのファイルにまとめます。</p>
+        <button id="export-button" class="wide">ファイルに書き出す</button>
+      </div>
+
+      <div class="card">
+        <h2>ファイルから読み込む</h2>
+        <p>書き出したファイルを選ぶと、記録が元に戻ります。<br>
+          <strong>今このスマホにある記録は、ファイルの中身に置き換わります。</strong></p>
+        <button id="import-button" class="wide secondary">ファイルを選んで読み込む</button>
+        <!-- ファイルを選ぶ部品（見えないようにして、上のボタンから呼び出す） -->
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
+
+      <div class="card">
+        <h2>スマホを替えるときの手順</h2>
+        <ol class="steps">
+          <li>古いスマホで「ファイルに書き出す」を押す</li>
+          <li>出てきたメニューから、メールや LINE の自分あて、iCloud Drive、Google ドライブなどに送る</li>
+          <li>新しいスマホでそのファイルを受け取り、「ファイル」アプリなどに保存する</li>
+          <li>新しいスマホでこのアプリを開き、「ファイルを選んで読み込む」でそのファイルを選ぶ</li>
+        </ol>
+        <p class="hint">スマホを替える予定がなくても、ときどき書き出しておくと安心です</p>
+      </div>
+    </section>
   </main>
+
+  <!-- 打席の記録を直すための小さな画面 -->
+  <dialog id="edit-dialog">
+    <h2 id="edit-title"></h2>
+    <label>回 <select id="edit-inning"></select></label>
+    <label>結果 <select id="edit-result"></select></label>
+    <label>打点 <select id="edit-rbi"></select></label>
+    <label class="check"><input type="checkbox" id="edit-run"> 得点した（ホームに還った）</label>
+    <label>盗塁 <select id="edit-sb"></select></label>
+    <div class="buttons">
+      <button id="edit-delete" class="danger small delete-left">削除</button>
+      <button id="edit-cancel" class="secondary small">閉じる</button>
+      <button id="edit-save" class="small">保存</button>
+    </div>
+  </dialog>
 
   <script src="app.js"></script>
 </body>
