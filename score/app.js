@@ -1,8 +1,10 @@
-// ===== 打撃成績スコアシート（入力用）の動き =====
+// ===== 記録する（スコア入力）の動きと、画面全体の切りかえ =====
 // データはメモ帳と同じく、ブラウザの「localStorage」に保存します。
-// データの形や、成績の計算・表の作り方は common.js にまとめてあります。
+// データの形や、成績の計算・表の作り方は common.js、
+// 「成績を見る」の画面は view.js にまとめてあります。
 
 const STORAGE_KEY = "softball-score";
+const MODE_KEY = "softball-mode";   // 最後に使った画面（成績を見る／記録する）を覚えておく名前
 const DEFAULT_SLOTS = 9; // 最初のオーダーの打順の数
 
 // 画面の部品を取り出す（$ は「idで探す」の短縮形）
@@ -18,6 +20,10 @@ let selectedRbi = 0;          // 選んでいる打点
 let editing = null;           // 直している打席 { game, atBat }
 let subTarget = null;         // 交代させる打順 { game, slot }
 let formGameId = null;        // 試合情報の入力欄で直している試合（新しく作るときは null）
+let pendingImport = null;     // 取り込み中の代理入力の試合 { game, unknown }
+
+// チームに公開されている成績（data.json）。開いたときに1回だけ読み込みに行く
+const publishedPromise = fetchPublishedData();
 
 // =========================================================
 // 保存と読み込み
@@ -97,12 +103,15 @@ function slotStatus(game, slot) {
   return playerName(last.playerId);
 }
 
-// 新しい試合のオーダー。前の試合の先発を引き継ぐ（なければ選手一覧の順）
+// 新しい試合のオーダー。前の試合の先発を引き継ぐ
+// （このスマホに試合がなければ、公開中の成績の最新の試合のオーダー。それもなければ選手一覧の順）
 function defaultLineup() {
   const latest = sortGames(data.games)[0];
   let ids;
   if (latest && latest.lineup.length > 0) {
     ids = latest.lineup.map((entries) => (findPlayer(entries[0].playerId) ? entries[0].playerId : null));
+  } else if (data.lastLineup && data.lastLineup.length > 0) {
+    ids = data.lastLineup.map((id) => (findPlayer(id) ? id : null));
   } else {
     ids = data.players.slice(0, DEFAULT_SLOTS).map((p) => p.id);
   }
@@ -110,8 +119,10 @@ function defaultLineup() {
 }
 
 // =========================================================
-// タブの切りかえ
+// 画面の切りかえ（成績を見る／記録する）とタブの切りかえ
 // =========================================================
+const lastTab = { view: "v-game", record: "game" }; // それぞれの画面で最後に開いていたタブ
+
 function switchTab(name) {
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.tab === name);
@@ -119,7 +130,42 @@ function switchTab(name) {
   document.querySelectorAll(".tab-page").forEach((page) => {
     page.hidden = page.id !== `tab-${name}`;
   });
+  lastTab[name.startsWith("v-") ? "view" : "record"] = name;
   window.scrollTo(0, 0);
+}
+
+function setMode(mode) {
+  document.querySelectorAll(".mode").forEach((button) => {
+    button.classList.toggle("active", button.dataset.mode === mode);
+  });
+  // data-mode が付いている部品（タブの列や案内）は、いまの画面のものだけ見せる
+  document.querySelectorAll("[data-mode]:not(.mode)").forEach((part) => {
+    part.hidden = part.dataset.mode !== mode;
+  });
+  switchTab(lastTab[mode]);
+  try {
+    localStorage.setItem(MODE_KEY, mode);
+  } catch (e) {
+    // 覚えておけなくても困らない
+  }
+  try {
+    history.replaceState(null, "", `#${mode}`); // URLの最後を #view / #record にする（ブックマーク用）
+  } catch (e) {
+    // できなくても困らない
+  }
+}
+
+// 最初に開く画面：URLの #record / #view → 前回の画面 → 成績を見る
+function firstMode() {
+  const hash = location.hash.slice(1);
+  if (hash === "record" || hash === "view") return hash;
+  try {
+    const saved = localStorage.getItem(MODE_KEY);
+    if (saved === "record" || saved === "view") return saved;
+  } catch (e) {
+    // 読めなければ「成績を見る」
+  }
+  return "view";
 }
 
 // =========================================================
@@ -395,10 +441,15 @@ function renderOrder() {
 
 // 先発の選手を変えたとき
 function changeStarter(game, slot, playerId) {
-  if (playerId && activeElsewhere(game, playerId, slot)) {
-    alert("その選手は、すでに別の打順に入っています");
-    renderAll();
-    return;
+  // 選んだ選手が、ほかの打順にいま入っているか
+  const other = playerId ? game.lineup.findIndex((_, i) => i !== slot && occupant(game, i) === playerId) : -1;
+  if (other !== -1) {
+    // 試合が始まっていて、その打順に記録や交代があるときは、動かすと記録がおかしくなるので止める
+    if (game.lineup[other].length > 1 || game.atBats.some((a) => a.slot === other)) {
+      alert(`${playerName(playerId)}は、${other + 1}番ですでに試合に出ているので、ここには入れられません`);
+      renderAll();
+      return;
+    }
   }
   const records = game.atBats.filter((a) => a.slot === slot && a.entry === 0);
   if (records.length > 0) {
@@ -414,6 +465,8 @@ function changeStarter(game, slot, playerId) {
     }
     records.forEach((a) => (a.playerId = playerId));
   }
+  // ほかの打順に入っていた選手なら、元の打順は（未設定）にして、こちらに移す
+  if (other !== -1) game.lineup[other][0].playerId = null;
   game.lineup[slot][0].playerId = playerId;
   saveData();
   renderAll();
@@ -733,13 +786,17 @@ function clearHistory() {
   renderAll();
 }
 
-// データをファイルにして、共有メニュー（スマホ）かダウンロード（パソコン）で渡す
+// 記録全体をファイルにして渡す（バックアップ・公開用）
 //   fileName: ファイルの名前
-async function exportData(fileName, title) {
-  // データを文字（JSON という形式）にして、ファイルを作る
-  const content = JSON.stringify(
-    { app: "softball-score", exportedAt: new Date().toISOString(), data: data }, null, 2);
-  const file = new File([content], fileName, { type: "application/json" });
+function exportData(fileName, title) {
+  shareJson(fileName, title, { app: "softball-score", exportedAt: new Date().toISOString(), data: data });
+}
+
+// 中身（content）をファイルにして、共有メニュー（スマホ）かダウンロード（パソコン）で渡す
+async function shareJson(fileName, title, content) {
+  // 中身を文字（JSON という形式）にして、ファイルを作る
+  const text = JSON.stringify(content, null, 2);
+  const file = new File([text], fileName, { type: "application/json" });
 
   // スマホなら「共有」メニューを出す（メール・LINE・ドライブなどに送れる）
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -793,6 +850,197 @@ function importData(file) {
 }
 
 // =========================================================
+// 代理入力（試合だけのやり取り）と、公開中の選手データの読み込み
+// =========================================================
+
+// 「送る試合」のプルダウン
+function renderSendGameSelect() {
+  const select = $("send-game-select");
+  const before = select.value;
+  select.innerHTML = "";
+  const hasGames = data.games.length > 0;
+  select.disabled = !hasGames;
+  $("send-game-button").disabled = !hasGames;
+  if (!hasGames) {
+    select.append(new Option("試合がありません", ""));
+    return;
+  }
+  appendGameOptions(select, data.games);
+  select.value = findGame(before) ? before : currentGameId;
+}
+
+// 試合で使っている選手のID
+function playerIdsInGame(game) {
+  const ids = [...game.lineup.flat().map((e) => e.playerId), ...game.atBats.map((a) => a.playerId)];
+  return new Set(ids.filter((id) => id !== null));
+}
+
+// 「この試合を書き出す」ボタン（代理の人）
+function exportGame() {
+  const game = findGame($("send-game-select").value);
+  if (!game) return;
+  const ids = playerIdsInGame(game);
+  shareJson(`game-${game.date}.json`, "代理で記録した試合", {
+    app: "softball-score-game",
+    exportedAt: new Date().toISOString(),
+    game: game,
+    players: data.players.filter((p) => ids.has(p.id)), // この試合に出た選手だけ
+  });
+}
+
+// 試合のファイルが選ばれたとき（記録係）
+function importGame(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let json = null;
+    try {
+      json = JSON.parse(reader.result);
+    } catch (e) {
+      // 読めないファイルなら json は null のまま
+    }
+    if (!json || json.app !== "softball-score-game" || !json.game || !json.game.id) {
+      alert("このファイルは読み込めませんでした。\n代理の人が「この試合を書き出す」で作ったファイルを選んでください。");
+      return;
+    }
+    const incoming = normalizeData({ players: Array.isArray(json.players) ? json.players : [], games: [] }).players;
+    const game = normalizeGame(json.game, incoming);
+
+    // 同じ試合をもう取り込んでいるとき（直したものを送り直してもらったときなど）
+    if (findGame(game.id) &&
+      !confirm(`「${gameLabel(game)}」はもう取り込んであります。\n送られてきた内容に置き換えますか？`)) return;
+
+    // このスマホにいない選手（代理の人が当日追加した選手など）
+    const ids = playerIdsInGame(game);
+    const unknown = incoming.filter((p) => ids.has(p.id) && !findPlayer(p.id));
+    pendingImport = { game, unknown };
+    if (unknown.length === 0) {
+      finishImportGame({});
+    } else {
+      openMapDialog(unknown);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// 知らない選手を「誰と同じ人か」選ぶ画面を開く
+function openMapDialog(unknown) {
+  const area = $("map-rows");
+  area.innerHTML = "";
+  for (const p of unknown) {
+    const label = el("label", "map-row", playerLabel(p));
+    const select = el("select");
+    select.dataset.id = p.id;
+    select.append(new Option("新しい選手として追加", ""));
+    for (const local of data.players) select.append(new Option(`${playerLabel(local)} と同じ人`, local.id));
+    // 同じ名前の選手がいれば、その人を最初から選んでおく
+    const sameName = data.players.find((local) => local.name === p.name);
+    if (sameName) select.value = sameName.id;
+    label.append(select);
+    area.append(label);
+  }
+  $("map-dialog").showModal();
+}
+
+// 「取り込む」ボタン（選手の確認の画面）
+function saveMap() {
+  const mapping = {};
+  const chosen = [];
+  for (const select of $("map-rows").querySelectorAll("select")) {
+    if (select.value) {
+      mapping[select.dataset.id] = select.value;
+      chosen.push(select.value);
+    }
+  }
+  if (new Set(chosen).size !== chosen.length) {
+    alert("同じ選手が2回選ばれています。選び直してください。");
+    return;
+  }
+  // すでにこの試合に出ている選手を選ぶと、同じ人が2つの打順に入ってしまうので止める
+  const inGame = playerIdsInGame(pendingImport.game);
+  const twice = chosen.find((id) => inGame.has(id));
+  if (twice) {
+    alert(`${playerName(twice)}は、この試合にすでに入っています。\n別の選手か「新しい選手として追加」を選んでください。`);
+    return;
+  }
+  $("map-dialog").close();
+  finishImportGame(mapping);
+}
+
+function cancelMap() {
+  pendingImport = null;
+  $("map-dialog").close();
+}
+
+// 試合を今の記録に追加する
+//   mapping: { 知らない選手のID: このスマホの選手のID }（「新しい選手として追加」は入っていない）
+function finishImportGame(mapping) {
+  if (!pendingImport) return;
+  const { game, unknown } = pendingImport;
+  pendingImport = null;
+
+  // 「同じ人」と選んだ選手は、このスマホの選手のIDに付けかえる
+  const remap = (id) => (id !== null && mapping[id] ? mapping[id] : id);
+  for (const entries of game.lineup) {
+    for (const e of entries) e.playerId = remap(e.playerId);
+  }
+  for (const a of game.atBats) a.playerId = remap(a.playerId);
+
+  // 「新しい選手として追加」を選んだ選手は、選手一覧に足す
+  const added = unknown.filter((p) => !mapping[p.id]);
+  data.players.push(...added.map((p) => ({ id: p.id, number: p.number, name: p.name })));
+
+  // 同じ試合があれば置き換え、なければ追加
+  if (findGame(game.id)) {
+    data.games = data.games.map((g) => (g.id === game.id ? game : g));
+  } else {
+    data.games.push(game);
+  }
+  saveData();
+  selectGame(game.id);
+  renderAll();
+  alert(`「${gameLabel(game)}」を取り込みました` + (added.length > 0 ? `（新しい選手 ${added.length}人を追加）` : ""));
+}
+
+// 公開中の成績（data.json）から、選手データを読み込む
+//   manual: ボタンで読み込んだとき true（結果を知らせる）。開いたときの自動読み込みは false
+async function syncPlayersFromServer(manual) {
+  const published = manual ? await fetchPublishedData() : await publishedPromise;
+  if (!published) {
+    if (manual) {
+      alert("公開中の選手データを読み込めませんでした。\n電波の状態や、記録係が成績を公開しているかを確認してください。");
+    }
+    return;
+  }
+
+  // このスマホにいない選手だけを足す（今いる選手は変えない）
+  const added = published.data.players
+    .filter((p) => !findPlayer(p.id))
+    .map((p) => ({ id: p.id, number: p.number, name: p.name }));
+  data.players.push(...added);
+
+  // このスマホに試合がなければ、公開中の最新の試合のオーダーを、新しい試合の最初のオーダーにする
+  let lineupCopied = false;
+  const latest = sortGames(published.data.games)[0];
+  if (data.games.length === 0 && latest) {
+    data.lastLineup = latest.lineup.map((entries) => entries[0].playerId);
+    lineupCopied = true;
+  }
+
+  if (added.length > 0 || lineupCopied) saveData();
+  renderAll();
+
+  const message = added.length > 0
+    ? `公開中の選手データから、${added.length}人の選手を読み込みました。`
+    : "新しく追加する選手はいませんでした。";
+  if (manual) {
+    alert(message);
+  } else if (added.length > 0) {
+    $("sync-note").textContent = message;
+    $("sync-note").hidden = false;
+  }
+}
+
+// =========================================================
 // 画面全体を作り直す
 // =========================================================
 function renderAll() {
@@ -804,11 +1052,15 @@ function renderAll() {
   renderStats();
   renderPlayers();
   renderDataSummary();
+  renderSendGameSelect();
 }
 
 // =========================================================
 // ボタンに動きを結びつける
 // =========================================================
+document.querySelectorAll(".mode").forEach((button) => {
+  button.addEventListener("click", () => setMode(button.dataset.mode));
+});
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => switchTab(tab.dataset.tab));
 });
@@ -852,6 +1104,7 @@ $("edit-delete").addEventListener("click", deleteEdit);
 // 成績・選手
 $("stats-filter").addEventListener("change", renderStats);
 $("add-player-button").addEventListener("click", addPlayer);
+$("sync-players-button").addEventListener("click", () => syncPlayersFromServer(true));
 
 // データ
 $("export-button").addEventListener("click", () =>
@@ -866,6 +1119,15 @@ $("history-file").addEventListener("change", (e) => {
   e.target.value = "";
 });
 $("history-clear").addEventListener("click", clearHistory);
+$("send-game-button").addEventListener("click", exportGame);
+$("game-import-button").addEventListener("click", () => $("game-import-file").click());
+$("game-import-file").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) importGame(file);
+  e.target.value = "";
+});
+$("map-save").addEventListener("click", saveMap);
+$("map-cancel").addEventListener("click", cancelMap);
 $("import-file").addEventListener("change", (e) => {
   const file = e.target.files[0];
   if (file) importData(file);
@@ -873,6 +1135,18 @@ $("import-file").addEventListener("change", (e) => {
 });
 
 // 最初に一回、画面を作る
+// 用語の説明を、置き場所（glossary-slot）にコピーする
+for (const slot of document.querySelectorAll(".glossary-slot")) {
+  slot.append($("glossary-template").content.cloneNode(true));
+}
 setupDialogOptions();
 selectGame(null);
 renderAll();
+setMode(firstMode());
+
+// 公開中の成績が読み込めたら、「成績を見る」に表示する。
+// このスマホに選手が1人もいなければ（代理の人が初めて開いたときなど）、選手データも自動で読み込む
+publishedPromise.then((published) => {
+  Viewer.show(published);
+  if (data.players.length === 0) syncPlayersFromServer(false);
+});
