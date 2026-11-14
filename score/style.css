@@ -521,3 +521,51 @@ code {
 .clear-history {
   margin-top: 12px;
 }
+
+/* ===== 「成績を見る」「記録する」の切りかえ ===== */
+.mode-switch {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 8px;
+}
+
+.mode {
+  flex: 1;
+  padding: 8px 0;
+  font-size: 0.95rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #cde3d0;
+}
+
+.mode.active {
+  background: white;
+  color: #2f6b3a;
+  font-weight: bold;
+}
+
+.record-note {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #e3eefb;
+  color: #1f4a7a;
+  font-size: 0.85rem;
+}
+
+/* ===== 代理入力の選手の確認 ===== */
+.map-row {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  font-weight: bold;
+  color: #333;
+}
+
+.map-row select {
+  font-weight: normal;
+}
+
+/* 隠した部品（hidden）は、ほかの見た目の設定より優先して必ず隠す */
+[hidden] {
+  display: none !important;
+}

@@ -3,15 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>打撃成績スコアシート</title>
+  <title>チーム成績</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
-    <h1>⚾ 打撃成績スコアシート</h1>
-    <!-- 画面を切りかえるタブ -->
-    <nav class="tabs">
-      <button class="tab active" data-tab="game">試合入力</button>
+    <h1>⚾ チーム成績</h1>
+
+    <!-- 「成績を見る」と「記録する」の切りかえ -->
+    <div class="mode-switch">
+      <button class="mode active" data-mode="view">成績を見る</button>
+      <button class="mode" data-mode="record">記録する</button>
+    </div>
+
+    <!-- 画面を切りかえるタブ（成績を見る） -->
+    <nav class="tabs" data-mode="view">
+      <button class="tab active" data-tab="v-game">試合結果</button>
+      <button class="tab" data-tab="v-season">シーズン</button>
+      <button class="tab" data-tab="v-career">通算</button>
+    </nav>
+
+    <!-- 画面を切りかえるタブ（記録する） -->
+    <nav class="tabs" data-mode="record" hidden>
+      <button class="tab" data-tab="game">試合入力</button>
       <button class="tab" data-tab="order">オーダー</button>
       <button class="tab" data-tab="stats">成績</button>
       <button class="tab" data-tab="players">選手</button>
@@ -20,8 +34,65 @@
   </header>
 
   <main>
-    <!-- ===== タブ1：試合入力 ===== -->
-    <section id="tab-game" class="tab-page">
+    <!-- ===== 成績を見る：上の案内 ===== -->
+    <div data-mode="view">
+      <p id="v-updated" class="hint"></p>
+      <p id="v-load-error" class="notice" hidden>
+        まだ成績が公開されていません。記録係の人が公開するまでお待ちください。
+      </p>
+    </div>
+
+    <!-- ===== 記録する：上の案内 ===== -->
+    <div data-mode="record" hidden>
+      <p class="record-note">
+        記録は<strong>このスマホの中</strong>に保存されます。チームの成績にのせるには、記録係が公開します（代理で記録した人は「データ」タブから記録係に送ってください）。
+      </p>
+      <p id="sync-note" class="notice" hidden></p>
+    </div>
+
+    <!-- ===== 成績を見る：試合結果 ===== -->
+    <section id="tab-v-game" class="tab-page">
+      <div class="card v-needs-data">
+        <label>試合 <select id="v-game-select"></select></label>
+        <h2 id="v-game-title"></h2>
+        <p id="v-sheet-legend" class="legend">記号：数字＝打点　●＝得点　盗＝盗塁　（一番下の行は各回のチームの得点）</p>
+        <p id="v-history-note" class="hint" hidden>この試合は回ごとの記録がないため、選手ごとの合計で表示しています</p>
+        <div class="table-wrap">
+          <table id="v-sheet-table"></table>
+        </div>
+        <p class="hint">表は横にスクロールできます</p>
+      </div>
+    </section>
+
+    <!-- ===== 成績を見る：シーズン ===== -->
+    <section id="tab-v-season" class="tab-page" hidden>
+      <div class="card v-needs-data">
+        <label>シーズン <select id="v-season-select"></select></label>
+        <p id="v-season-info" class="hint"></p>
+        <label>並び順 <select id="v-season-sort"></select></label>
+        <div class="table-wrap">
+          <table id="v-season-table"></table>
+        </div>
+        <p class="hint">表は横にスクロールできます</p>
+      </div>
+      <div class="glossary-slot"></div>
+    </section>
+
+    <!-- ===== 成績を見る：通算 ===== -->
+    <section id="tab-v-career" class="tab-page" hidden>
+      <div class="card v-needs-data">
+        <p id="v-career-info" class="hint"></p>
+        <label>並び順 <select id="v-career-sort"></select></label>
+        <div class="table-wrap">
+          <table id="v-career-table"></table>
+        </div>
+        <p class="hint">表は横にスクロールできます</p>
+      </div>
+      <div class="glossary-slot"></div>
+    </section>
+
+    <!-- ===== 記録する：試合入力 ===== -->
+    <section id="tab-game" class="tab-page" hidden>
       <p id="no-player-message" class="notice" hidden>
         まず「選手」タブで選手を登録してください。
       </p>
@@ -93,7 +164,7 @@
       </div>
     </section>
 
-    <!-- ===== タブ：オーダー（打順） ===== -->
+    <!-- ===== 記録する：オーダー（打順） ===== -->
     <section id="tab-order" class="tab-page" hidden>
       <p id="order-no-game" class="notice" hidden>
         まず「試合入力」タブで試合を作ってください。
@@ -101,8 +172,9 @@
       <div id="order-card" class="card" hidden>
         <h2>オーダー：<span id="order-game"></span></h2>
         <p class="hint">
-          打順ごとに先発の選手を選びます。途中で代打が出たら「代打・交代」、退場したら「退場」を押します。
-          「取消」で最後の変更を元に戻せます。退場で空いた打順は、打席が回ってきても飛ばされます。
+          打順ごとに先発の選手を選びます。別の打順に入っている選手を選ぶと、その選手はこちらに移り、元の打順は（未設定）になります。
+          途中で代打が出たら「代打・交代」、退場したら「退場」を押します。「取消」で最後の変更を元に戻せます。
+          退場で空いた打順は、打席が回ってきても飛ばされます。
         </p>
         <div id="order-area"></div>
         <div class="buttons order-buttons">
@@ -113,33 +185,21 @@
       </div>
     </section>
 
-    <!-- ===== タブ2：成績 ===== -->
+    <!-- ===== 記録する：成績（このスマホの記録） ===== -->
     <section id="tab-stats" class="tab-page" hidden>
       <div class="card">
-        <h2>打撃成績</h2>
+        <h2>打撃成績（このスマホの記録）</h2>
+        <p class="hint">公開する前の試合も含みます。チームに公開されている成績は「成績を見る」で見られます</p>
         <label>集計する範囲 <select id="stats-filter"></select></label>
         <div class="table-wrap">
           <table id="stats-table"></table>
         </div>
         <p class="hint">表は横にスクロールできます</p>
       </div>
-
-      <div class="card">
-        <h2>用語の説明</h2>
-        <dl class="glossary">
-          <dt>打席</dt><dd>打席に立った回数（すべて）</dd>
-          <dt>打数</dt><dd>打席から四球・死球・犠打・犠飛を引いた数</dd>
-          <dt>打率</dt><dd>安打 ÷ 打数</dd>
-          <dt>出塁率</dt><dd>（安打＋四死球）÷（打数＋四死球＋犠飛）<br>※2018〜2024年度の記録は、Excelの記録に合わせて犠打も割る数に入れています</dd>
-          <dt>長打率</dt><dd>塁打数 ÷ 打数（単打1・二塁打2・三塁打3・本塁打4）</dd>
-          <dt>OPS</dt><dd>出塁率＋長打率。打者の総合力の目安</dd>
-          <dt>得点</dt><dd>ホームに還ってきた回数</dd>
-          <dt>盗塁</dt><dd>盗塁に成功した回数</dd>
-        </dl>
-      </div>
+      <div class="glossary-slot"></div>
     </section>
 
-    <!-- ===== タブ3：選手 ===== -->
+    <!-- ===== 記録する：選手 ===== -->
     <section id="tab-players" class="tab-page" hidden>
       <div class="card">
         <h2>選手を登録</h2>
@@ -152,17 +212,53 @@
 
       <div class="card">
         <h2>選手一覧</h2>
-        <p class="hint">↑↓で並べ替えられます。この並び順が、最初の試合のオーダーになります（2試合目からは、前の試合の先発オーダーを引き継ぎます）</p>
+        <p class="hint">↑↓で並べ替えられます。新しい試合のオーダーは、前の試合の先発を引き継ぎます（試合がまだないときは、この並び順になります）</p>
         <ul id="player-list"></ul>
         <p id="player-empty" class="empty">まだ選手がいません</p>
       </div>
+
+      <div class="card">
+        <h2>公開中の選手データを読み込む</h2>
+        <p>チームに公開されている成績（<code>data.json</code>）から、選手の一覧を読み込みます。このスマホにいない選手だけが追加されます（今いる選手は変わりません）。</p>
+        <p class="hint">代理で記録する人は、これで記録係と同じ選手データを使えます。選手の一覧が空のときは、アプリを開いたときに自動で読み込みます</p>
+        <button id="sync-players-button" class="wide secondary">公開中の選手データを読み込む</button>
+      </div>
     </section>
 
-    <!-- ===== タブ4：データ（バックアップ） ===== -->
+    <!-- ===== 記録する：データ ===== -->
     <section id="tab-data" class="tab-page" hidden>
       <div class="card">
         <h2>今の記録</h2>
         <p id="data-summary"></p>
+      </div>
+
+      <div class="card">
+        <h2>成績をチームに公開する（記録係）</h2>
+        <p>「成績を見る」の画面に、最新の記録をのせるためのファイルを作ります。</p>
+        <button id="publish-button" class="wide">公開用ファイル（data.json）を書き出す</button>
+        <ol class="steps">
+          <li>上のボタンで <code>data.json</code> を書き出し、スマホの「ファイル」アプリなどに保存する</li>
+          <li>GitHub でリポジトリを開き、<code>score</code> フォルダを開く</li>
+          <li>「Add file」→「Upload files」を押し、<code>data.json</code> を選ぶ</li>
+          <li>一番下の緑の「Commit changes」を押す</li>
+          <li>1〜2分すると、Netlify が自動で公開し直し、「成績を見る」が新しい記録に変わる</li>
+        </ol>
+        <p class="hint">ファイル名は <code>data.json</code> のままにしてください。名前が違うと読み込めません</p>
+      </div>
+
+      <div class="card">
+        <h2>代理で記録した試合を送る（代理の人）</h2>
+        <p>記録係がいない日に代わりに記録したときは、その試合だけをファイルにして記録係に送ります。</p>
+        <label>送る試合 <select id="send-game-select"></select></label>
+        <button id="send-game-button" class="wide">この試合を書き出す</button>
+      </div>
+
+      <div class="card">
+        <h2>代理で記録された試合を取り込む（記録係）</h2>
+        <p>代理の人から送られてきた試合のファイルを、今の記録に<strong>追加</strong>します。今の記録は消えません。</p>
+        <p class="hint">知らない選手が入っていたときは、取り込む前に「誰と同じ人か」「新しい選手か」を選べます</p>
+        <button id="game-import-button" class="wide secondary">試合のファイルを選ぶ</button>
+        <input type="file" id="game-import-file" accept=".json,application/json" hidden>
       </div>
 
       <div class="card">
@@ -172,36 +268,22 @@
       </div>
 
       <div class="card">
-        <h2>成績をチームに公開する</h2>
-        <p>メンバー向けの成績ページ（見るだけのページ）に、最新の記録をのせるためのファイルを作ります。</p>
-        <button id="publish-button" class="wide">公開用ファイル（data.json）を書き出す</button>
-        <ol class="steps">
-          <li>上のボタンで <code>data.json</code> を書き出し、スマホの「ファイル」アプリなどに保存する</li>
-          <li>GitHub でこのリポジトリを開き、<code>results</code> フォルダを開く</li>
-          <li>「Add file」→「Upload files」を押し、<code>data.json</code> を選ぶ</li>
-          <li>一番下の緑の「Commit changes」を押す</li>
-          <li>1〜2分すると、成績ページが新しい記録に変わる</li>
-        </ol>
-        <p class="hint">ファイル名は <code>data.json</code> のままにしてください。名前が違うと成績ページが読み込めません</p>
-      </div>
-
-      <div class="card">
-        <h2>過去の成績を取り込む</h2>
-        <p>Excelの記録から変換した過去の成績のファイルを取り込みます。今の記録はそのまま残り、成績タブや成績ページの「シーズン」「通算」に合計されます。</p>
-        <p id="history-summary" class="hint"></p>
-        <p id="history-names" class="hint pre-line"></p>
-        <button id="history-button" class="wide secondary">過去の成績のファイルを選ぶ</button>
-        <input type="file" id="history-file" accept=".json,application/json" hidden>
-        <button id="history-clear" class="danger small clear-history" hidden>取り込んだ過去の成績を消す</button>
-      </div>
-
-      <div class="card">
         <h2>ファイルから読み込む</h2>
         <p>書き出したファイルを選ぶと、記録が元に戻ります。<br>
           <strong>今このスマホにある記録は、ファイルの中身に置き換わります。</strong></p>
         <button id="import-button" class="wide secondary">ファイルを選んで読み込む</button>
         <!-- ファイルを選ぶ部品（見えないようにして、上のボタンから呼び出す） -->
         <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
+
+      <div class="card">
+        <h2>過去の成績を取り込む</h2>
+        <p>Excelの記録から変換した過去の成績のファイルを取り込みます。今の記録はそのまま残り、成績の「シーズン」「通算」に合計されます。</p>
+        <p id="history-summary" class="hint"></p>
+        <p id="history-names" class="hint pre-line"></p>
+        <button id="history-button" class="wide secondary">過去の成績のファイルを選ぶ</button>
+        <input type="file" id="history-file" accept=".json,application/json" hidden>
+        <button id="history-clear" class="danger small clear-history" hidden>取り込んだ過去の成績を消す</button>
       </div>
 
       <div class="card">
@@ -216,6 +298,23 @@
       </div>
     </section>
   </main>
+
+  <!-- 用語の説明（いくつかの画面で使い回す） -->
+  <template id="glossary-template">
+    <div class="card">
+      <h2>用語の説明</h2>
+      <dl class="glossary">
+        <dt>打席</dt><dd>打席に立った回数（すべて）</dd>
+        <dt>打数</dt><dd>打席から四球・死球・犠打・犠飛を引いた数</dd>
+        <dt>打率</dt><dd>安打 ÷ 打数</dd>
+        <dt>出塁率</dt><dd>（安打＋四死球）÷（打数＋四死球＋犠飛）<br>※2018〜2024年度の記録は、Excelの記録に合わせて犠打も割る数に入れています</dd>
+        <dt>長打率</dt><dd>塁打数 ÷ 打数（単打1・二塁打2・三塁打3・本塁打4）</dd>
+        <dt>OPS</dt><dd>出塁率＋長打率。打者の総合力の目安</dd>
+        <dt>得点</dt><dd>ホームに還ってきた回数</dd>
+        <dt>盗塁</dt><dd>盗塁に成功した回数</dd>
+      </dl>
+    </div>
+  </template>
 
   <!-- 代打・交代の選手を選ぶ小さな画面 -->
   <dialog id="sub-dialog">
@@ -243,8 +342,20 @@
     </div>
   </dialog>
 
-  <!-- 共通の部品を先に読み込んでから、このページの動きを読み込む -->
+  <!-- 代理で記録された試合の「知らない選手」を、誰と同じ人か選ぶ小さな画面 -->
+  <dialog id="map-dialog">
+    <h2>選手の確認</h2>
+    <p class="hint">この試合には、あなたのスマホにいない選手が入っています。それぞれ、誰と同じ人かを選んでください。</p>
+    <div id="map-rows"></div>
+    <div class="buttons">
+      <button id="map-cancel" class="secondary small">やめる</button>
+      <button id="map-save" class="small">取り込む</button>
+    </div>
+  </dialog>
+
+  <!-- 共通の部品 → 成績を見る画面 → 記録する画面（と全体の切りかえ）の順に読み込む -->
   <script src="common.js"></script>
+  <script src="view.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

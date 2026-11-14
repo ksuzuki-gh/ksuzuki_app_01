@@ -6,6 +6,7 @@
 // {
 //   players: [ { id, number, name } ],                              ← 選手
 //   games:   [ { id, date, season, opponent, lineup, atBats } ]    ← 試合
+//   lastLineup: [ 選手ID, ... ]   ← 新しい試合の最初のオーダー（このスマホにまだ試合がないときに使う）
 // }
 //
 // season（シーズン）：年度の数字。2026 なら「2026年度（2026年4月〜2027年3月）」
@@ -158,7 +159,29 @@ function normalizeData(raw) {
     .map((p) => ({ id: String(p.id), number: String(p.number ?? ""), name: p.name }));
 
   const games = raw.games.filter((g) => g && g.id).map((g) => normalizeGame(g, players));
-  return { players, games, history: normalizeHistory(raw.history) };
+  const lastLineup = Array.isArray(raw.lastLineup)
+    ? raw.lastLineup.slice(0, MAX_SLOTS).map((id) => (id == null ? null : String(id)))
+    : null;
+  return { players, games, history: normalizeHistory(raw.history), lastLineup };
+}
+
+// チームに公開されている成績（data.json）を読み込む。読めなければ null
+//   戻り値: { data, exportedAt }
+async function fetchPublishedData() {
+  // 以前は results フォルダに置いていたので、そちらも探す
+  for (const url of ["data.json", "../results/data.json"]) {
+    try {
+      // cache: "no-store" … 古いファイルではなく、いつも最新のファイルを取りにいく
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) continue;
+      const json = await response.json();
+      const data = normalizeData(json.data ?? json);
+      if (data) return { data: data, exportedAt: json.exportedAt || null };
+    } catch (e) {
+      // 次の場所を試す
+    }
+  }
+  return null;
 }
 
 // 過去の成績を整える（なければ空っぽ）

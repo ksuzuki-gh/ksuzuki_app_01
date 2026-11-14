@@ -4,85 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>チーム成績</title>
-  <!-- 見た目は入力用アプリ（score/）と同じものを使う -->
-  <link rel="stylesheet" href="../score/style.css">
+  <!-- 成績ページは score/ にまとめたので、そちらへ自動で移動する（前のURLを使っている人のため） -->
+  <meta http-equiv="refresh" content="0; url=../score/#view">
 </head>
 <body>
-  <header>
-    <h1>⚾ チーム成績</h1>
-    <nav class="tabs">
-      <button class="tab active" data-tab="game">試合結果</button>
-      <button class="tab" data-tab="season">シーズン</button>
-      <button class="tab" data-tab="career">通算</button>
-    </nav>
-  </header>
-
-  <main>
-    <p id="updated" class="hint"></p>
-
-    <!-- 読み込めなかったときのメッセージ -->
-    <p id="load-error" class="notice" hidden>
-      まだ成績が公開されていません。記録係の人が公開するまでお待ちください。
-    </p>
-
-    <div id="content" hidden>
-      <!-- ===== 試合結果 ===== -->
-      <section id="tab-game" class="tab-page">
-        <div class="card">
-          <label>試合 <select id="game-select"></select></label>
-          <h2 id="game-title"></h2>
-          <p id="sheet-legend" class="legend">記号：数字＝打点　●＝得点　盗＝盗塁　（一番下の行は各回のチームの得点）</p>
-          <p id="history-note" class="hint" hidden>この試合は回ごとの記録がないため、選手ごとの合計で表示しています</p>
-          <div class="table-wrap">
-            <table id="sheet-table"></table>
-          </div>
-          <p class="hint">表は横にスクロールできます</p>
-        </div>
-      </section>
-
-      <!-- ===== シーズン ===== -->
-      <section id="tab-season" class="tab-page" hidden>
-        <div class="card">
-          <label>シーズン <select id="season-select"></select></label>
-          <p id="season-info" class="hint"></p>
-          <label>並び順 <select id="season-sort" class="sort-select"></select></label>
-          <div class="table-wrap">
-            <table id="season-table"></table>
-          </div>
-          <p class="hint">表は横にスクロールできます</p>
-        </div>
-      </section>
-
-      <!-- ===== 通算 ===== -->
-      <section id="tab-career" class="tab-page" hidden>
-        <div class="card">
-          <p id="career-info" class="hint"></p>
-          <label>並び順 <select id="career-sort" class="sort-select"></select></label>
-          <div class="table-wrap">
-            <table id="career-table"></table>
-          </div>
-          <p class="hint">表は横にスクロールできます</p>
-        </div>
-      </section>
-
-      <div class="card">
-        <h2>用語の説明</h2>
-        <dl class="glossary">
-          <dt>打席</dt><dd>打席に立った回数（すべて）</dd>
-          <dt>打数</dt><dd>打席から四球・死球・犠打・犠飛を引いた数</dd>
-          <dt>打率</dt><dd>安打 ÷ 打数</dd>
-          <dt>出塁率</dt><dd>（安打＋四死球）÷（打数＋四死球＋犠飛）<br>※2018〜2024年度の記録は、Excelの記録に合わせて犠打も割る数に入れています</dd>
-          <dt>長打率</dt><dd>塁打数 ÷ 打数（単打1・二塁打2・三塁打3・本塁打4）</dd>
-          <dt>OPS</dt><dd>出塁率＋長打率。打者の総合力の目安</dd>
-          <dt>得点</dt><dd>ホームに還ってきた回数</dd>
-          <dt>盗塁</dt><dd>盗塁に成功した回数</dd>
-        </dl>
-      </div>
-    </div>
-  </main>
-
-  <!-- 共通の部品（計算や表の作り方）を先に読み込んでから、このページの動きを読み込む -->
-  <script src="../score/common.js"></script>
-  <script src="view.js"></script>
+  <p>成績のページは移動しました。自動で移動しない場合は、<a href="../score/#view">こちら</a>を開いてください。</p>
 </body>
 </html>
