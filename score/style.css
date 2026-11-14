@@ -1,0 +1,523 @@
+/* ===== 全体の見た目 ===== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  background: #eef3ee;
+  color: #333;
+}
+
+header {
+  background: #2f6b3a; /* グラウンドの緑 */
+  color: white;
+  position: sticky; /* スクロールしても上に残る */
+  top: 0;
+  z-index: 10;
+}
+
+h1 {
+  margin: 0;
+  padding: 12px 16px 8px;
+  font-size: 1.2rem;
+}
+
+h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+main {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 12px 16px 40px;
+}
+
+/* ===== タブ ===== */
+.tabs {
+  display: flex;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #cde3d0;
+  font-size: 0.95rem;
+  border-radius: 0;
+}
+
+.tab.active {
+  color: white;
+  border-bottom-color: #f0b429;
+  font-weight: bold;
+}
+
+/* ===== カード（白い四角） ===== */
+.card {
+  background: white;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.row select,
+.row input {
+  flex: 1;
+  min-width: 0; /* 狭い画面ではみ出さないように */
+}
+
+.number-input {
+  flex: 0 0 70px !important;
+}
+
+label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+label input,
+label select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}
+
+input,
+select {
+  padding: 10px;
+  font-size: 16px; /* 16px未満だとiPhoneで勝手にズームされる */
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: white;
+  color: #333;
+}
+
+.sub-form {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed #ccc;
+}
+
+.label {
+  margin: 8px 0 6px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* ===== ボタン ===== */
+button {
+  padding: 10px 16px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  background: #2b7a78;
+  color: white;
+  cursor: pointer;
+}
+
+button.small {
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+button.secondary {
+  background: #999;
+}
+
+button.danger {
+  background: #d64545;
+}
+
+button.wide {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ===== 結果ボタン ===== */
+.result-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* 横に4つ並べる */
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.result-button,
+.choice {
+  padding: 12px 0;
+  font-size: 0.95rem;
+  border: 2px solid transparent;
+}
+
+/* 結果の種類ごとの色 */
+.kind-hit {
+  background: #e3f4e6;
+  color: #1d6b2c;
+}
+
+.kind-walk {
+  background: #e3eefb;
+  color: #1f5a9e;
+}
+
+.kind-out {
+  background: #eeeeee;
+  color: #555;
+}
+
+/* 選んでいるボタンは濃くする */
+.result-button.selected,
+.choice.selected {
+  border-color: #333;
+  font-weight: bold;
+}
+
+.choice-row {
+  display: flex;
+  gap: 6px;
+}
+
+.choice {
+  flex: 1;
+  background: #eeeeee;
+  color: #333;
+}
+
+/* ===== 表 ===== */
+.table-wrap {
+  overflow-x: auto; /* 表が広いときは横スクロール */
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  padding: 8px 6px;
+  border-bottom: 1px solid #e5e5e5;
+  text-align: center;
+  white-space: nowrap;
+}
+
+th {
+  background: #f5f5f5;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+th:first-child,
+td:first-child {
+  text-align: left;
+  position: sticky; /* 横スクロールしても名前は残る */
+  left: 0;
+  background: white;
+}
+
+th:first-child {
+  background: #f5f5f5;
+}
+
+tr.total td {
+  font-weight: bold;
+  background: #fafaf0;
+}
+
+td.chips {
+  text-align: left;
+  white-space: normal;
+}
+
+.chip {
+  display: inline-block;
+  min-width: 30px;
+  margin: 2px;
+  padding: 4px 6px;
+  font-size: 0.85rem;
+  border-radius: 6px;
+}
+
+/* ===== 選手一覧 ===== */
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.player-name {
+  flex: 1;
+}
+
+.player-number {
+  display: inline-block;
+  min-width: 36px;
+  color: #2f6b3a;
+  font-weight: bold;
+}
+
+/* ===== その他 ===== */
+.hint {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.empty {
+  color: #999;
+  text-align: center;
+}
+
+.notice {
+  background: #fff6d8;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+#delete-game-button {
+  margin-top: 16px;
+}
+
+.glossary dt {
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+.glossary dd {
+  margin: 2px 0 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* ===== 回の切りかえ ===== */
+.inning-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+#inning-label {
+  min-width: 70px;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+
+.after-button {
+  margin-top: 8px;
+}
+
+.legend {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: #555;
+}
+
+/* ===== スコアブック形式の表 ===== */
+td.cell {
+  min-width: 44px;
+  padding: 4px 2px;
+  border-left: 1px solid #eee;
+}
+
+th.current,
+td.current {
+  background: #fff8e1; /* いま入力している回を目立たせる */
+}
+
+tr.total td.current {
+  background: #fff1c4;
+}
+
+/* ===== 打席を直す画面 ===== */
+dialog {
+  width: calc(100% - 32px);
+  max-width: 420px;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  color: #333;
+}
+
+label.check input {
+  display: inline;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+}
+
+.delete-left {
+  margin-right: auto; /* 削除ボタンだけ左に寄せる */
+}
+
+/* ===== データタブ ===== */
+.steps {
+  padding-left: 20px;
+  line-height: 1.7;
+}
+
+.steps li {
+  display: list-item;
+  border: none;
+  padding: 0;
+}
+
+/* ===== タブが5つになったので文字を少し小さく ===== */
+.tab {
+  font-size: 0.85rem;
+}
+
+/* ===== 打者と代打ボタン ===== */
+.batter-row {
+  margin-bottom: 10px;
+}
+
+/* ===== オーダー ===== */
+.slot {
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.slot-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.slot-head select {
+  flex: 1;
+  min-width: 0;
+}
+
+.slot-no {
+  min-width: 42px;
+  font-weight: bold;
+  color: #2f6b3a;
+}
+
+ul.slot-history {
+  margin: 6px 0 0 50px;
+}
+
+ul.slot-history li {
+  display: block;
+  border: none;
+  padding: 2px 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.slot-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.order-buttons {
+  margin-top: 12px;
+}
+
+button:disabled {
+  opacity: 0.4;
+}
+
+/* ===== スコアシートの交代・退場の行 ===== */
+td.sub-name {
+  padding-left: 18px;
+  color: #555;
+  font-size: 0.85rem;
+}
+
+tr.ejected-row td {
+  color: #d64545;
+  font-size: 0.85rem;
+  background: #fdf3f3;
+}
+
+/* ===== シーズン・試合情報 ===== */
+.form-title {
+  margin: 0 0 10px;
+  font-weight: bold;
+}
+
+.season-badge {
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #e3f4e6;
+  color: #1d6b2c;
+  font-size: 0.8rem;
+  font-weight: normal;
+}
+
+.game-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+#delete-game-button {
+  margin-top: 0;
+}
+
+code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: #f0f0f0;
+  font-size: 0.9em;
+}
+
+/* ===== 過去の成績 ===== */
+.pre-line {
+  white-space: pre-line; /* 文章の中の改行をそのまま表示 */
+}
+
+.clear-history {
+  margin-top: 12px;
+}

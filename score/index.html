@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>打撃成績スコアシート</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>⚾ 打撃成績スコアシート</h1>
+    <!-- 画面を切りかえるタブ -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="game">試合入力</button>
+      <button class="tab" data-tab="order">オーダー</button>
+      <button class="tab" data-tab="stats">成績</button>
+      <button class="tab" data-tab="players">選手</button>
+      <button class="tab" data-tab="data">データ</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ===== タブ1：試合入力 ===== -->
+    <section id="tab-game" class="tab-page">
+      <p id="no-player-message" class="notice" hidden>
+        まず「選手」タブで選手を登録してください。
+      </p>
+      <p id="no-lineup-message" class="notice" hidden>
+        この試合のオーダー（打順）に、打てる選手がいません。「オーダー」タブで設定してください。
+      </p>
+
+      <!-- 試合を選ぶ／作る -->
+      <div class="card">
+        <h2>試合</h2>
+        <div class="row">
+          <select id="game-select"></select>
+          <button id="new-game-button" class="small">＋新しい試合</button>
+        </div>
+
+        <!-- 試合情報の入力欄（新しい試合／試合情報の変更。ふだんは隠れている） -->
+        <div id="game-form" class="sub-form" hidden>
+          <p id="game-form-title" class="form-title">新しい試合</p>
+          <label>日付 <input type="date" id="game-date"></label>
+          <label>対戦相手 <input type="text" id="game-opponent" placeholder="例：ホワイトベアーズ"></label>
+          <label>シーズン <select id="game-season"></select></label>
+          <p class="hint">日付から自動で選ばれます（4月〜翌3月）。前の年度の試合が後にずれこんだときは、ここで変えてください</p>
+          <div class="buttons">
+            <button id="game-form-cancel" class="secondary small">キャンセル</button>
+            <button id="game-form-save" class="small">作成</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 打席結果の入力 -->
+      <div id="input-card" class="card" hidden>
+        <h2>打席結果を入力</h2>
+
+        <!-- 何回の攻撃か -->
+        <div class="inning-row">
+          <button id="inning-prev" class="secondary">◀</button>
+          <span id="inning-label">1回</span>
+          <button id="inning-next" class="secondary">▶</button>
+        </div>
+
+        <label>打者</label>
+        <div class="row batter-row">
+          <select id="batter-select"></select>
+          <button id="pinch-button" class="small secondary">代打</button>
+        </div>
+
+        <p class="label">結果</p>
+        <div id="result-buttons"></div>
+
+        <p class="label">打点</p>
+        <div id="rbi-buttons" class="choice-row"></div>
+
+        <button id="record-button" class="wide">記録する</button>
+        <p class="hint after-button">得点・盗塁は、下のスコアシートの記録をタップして後から付けます（本塁打は自動で得点になります）</p>
+      </div>
+
+      <!-- この試合のスコアシート -->
+      <div id="sheet-card" class="card" hidden>
+        <h2>スコアシート <span id="sheet-season" class="season-badge"></span></h2>
+        <p class="hint">記録をタップすると、得点・盗塁を付けたり、直したり、取り消したりできます</p>
+        <p class="legend">記号：数字＝打点　●＝得点　盗＝盗塁　（一番下の行は各回のチームの得点）</p>
+        <div class="table-wrap">
+          <table id="sheet-table"></table>
+        </div>
+        <div class="game-actions">
+          <button id="edit-game-button" class="secondary small">試合情報を変更</button>
+          <button id="delete-game-button" class="danger small">この試合を削除</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== タブ：オーダー（打順） ===== -->
+    <section id="tab-order" class="tab-page" hidden>
+      <p id="order-no-game" class="notice" hidden>
+        まず「試合入力」タブで試合を作ってください。
+      </p>
+      <div id="order-card" class="card" hidden>
+        <h2>オーダー：<span id="order-game"></span></h2>
+        <p class="hint">
+          打順ごとに先発の選手を選びます。途中で代打が出たら「代打・交代」、退場したら「退場」を押します。
+          「取消」で最後の変更を元に戻せます。退場で空いた打順は、打席が回ってきても飛ばされます。
+        </p>
+        <div id="order-area"></div>
+        <div class="buttons order-buttons">
+          <button id="remove-slot" class="small secondary">－ 最後の打順を削除</button>
+          <button id="add-slot" class="small">＋ 打順を追加</button>
+        </div>
+        <button id="go-input" class="wide">試合入力へ</button>
+      </div>
+    </section>
+
+    <!-- ===== タブ2：成績 ===== -->
+    <section id="tab-stats" class="tab-page" hidden>
+      <div class="card">
+        <h2>打撃成績</h2>
+        <label>集計する範囲 <select id="stats-filter"></select></label>
+        <div class="table-wrap">
+          <table id="stats-table"></table>
+        </div>
+        <p class="hint">表は横にスクロールできます</p>
+      </div>
+
+      <div class="card">
+        <h2>用語の説明</h2>
+        <dl class="glossary">
+          <dt>打席</dt><dd>打席に立った回数（すべて）</dd>
+          <dt>打数</dt><dd>打席から四球・死球・犠打・犠飛を引いた数</dd>
+          <dt>打率</dt><dd>安打 ÷ 打数</dd>
+          <dt>出塁率</dt><dd>（安打＋四死球）÷（打数＋四死球＋犠飛）<br>※2018〜2024年度の記録は、Excelの記録に合わせて犠打も割る数に入れています</dd>
+          <dt>長打率</dt><dd>塁打数 ÷ 打数（単打1・二塁打2・三塁打3・本塁打4）</dd>
+          <dt>OPS</dt><dd>出塁率＋長打率。打者の総合力の目安</dd>
+          <dt>得点</dt><dd>ホームに還ってきた回数</dd>
+          <dt>盗塁</dt><dd>盗塁に成功した回数</dd>
+        </dl>
+      </div>
+    </section>
+
+    <!-- ===== タブ3：選手 ===== -->
+    <section id="tab-players" class="tab-page" hidden>
+      <div class="card">
+        <h2>選手を登録</h2>
+        <div class="row">
+          <input type="text" id="player-number" inputmode="numeric" placeholder="背番号" class="number-input">
+          <input type="text" id="player-name" placeholder="名前">
+          <button id="add-player-button" class="small">追加</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>選手一覧</h2>
+        <p class="hint">↑↓で並べ替えられます。この並び順が、最初の試合のオーダーになります（2試合目からは、前の試合の先発オーダーを引き継ぎます）</p>
+        <ul id="player-list"></ul>
+        <p id="player-empty" class="empty">まだ選手がいません</p>
+      </div>
+    </section>
+
+    <!-- ===== タブ4：データ（バックアップ） ===== -->
+    <section id="tab-data" class="tab-page" hidden>
+      <div class="card">
+        <h2>今の記録</h2>
+        <p id="data-summary"></p>
+      </div>
+
+      <div class="card">
+        <h2>記録を書き出す（バックアップ）</h2>
+        <p>選手・試合・打席のすべての記録を、1つのファイルにまとめます。</p>
+        <button id="export-button" class="wide">ファイルに書き出す</button>
+      </div>
+
+      <div class="card">
+        <h2>成績をチームに公開する</h2>
+        <p>メンバー向けの成績ページ（見るだけのページ）に、最新の記録をのせるためのファイルを作ります。</p>
+        <button id="publish-button" class="wide">公開用ファイル（data.json）を書き出す</button>
+        <ol class="steps">
+          <li>上のボタンで <code>data.json</code> を書き出し、スマホの「ファイル」アプリなどに保存する</li>
+          <li>GitHub でこのリポジトリを開き、<code>results</code> フォルダを開く</li>
+          <li>「Add file」→「Upload files」を押し、<code>data.json</code> を選ぶ</li>
+          <li>一番下の緑の「Commit changes」を押す</li>
+          <li>1〜2分すると、成績ページが新しい記録に変わる</li>
+        </ol>
+        <p class="hint">ファイル名は <code>data.json</code> のままにしてください。名前が違うと成績ページが読み込めません</p>
+      </div>
+
+      <div class="card">
+        <h2>過去の成績を取り込む</h2>
+        <p>Excelの記録から変換した過去の成績のファイルを取り込みます。今の記録はそのまま残り、成績タブや成績ページの「シーズン」「通算」に合計されます。</p>
+        <p id="history-summary" class="hint"></p>
+        <p id="history-names" class="hint pre-line"></p>
+        <button id="history-button" class="wide secondary">過去の成績のファイルを選ぶ</button>
+        <input type="file" id="history-file" accept=".json,application/json" hidden>
+        <button id="history-clear" class="danger small clear-history" hidden>取り込んだ過去の成績を消す</button>
+      </div>
+
+      <div class="card">
+        <h2>ファイルから読み込む</h2>
+        <p>書き出したファイルを選ぶと、記録が元に戻ります。<br>
+          <strong>今このスマホにある記録は、ファイルの中身に置き換わります。</strong></p>
+        <button id="import-button" class="wide secondary">ファイルを選んで読み込む</button>
+        <!-- ファイルを選ぶ部品（見えないようにして、上のボタンから呼び出す） -->
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
+
+      <div class="card">
+        <h2>スマホを替えるときの手順</h2>
+        <ol class="steps">
+          <li>古いスマホで「ファイルに書き出す」を押す</li>
+          <li>出てきたメニューから、メールや LINE の自分あて、iCloud Drive、Google ドライブなどに送る</li>
+          <li>新しいスマホでそのファイルを受け取り、「ファイル」アプリなどに保存する</li>
+          <li>新しいスマホでこのアプリを開き、「ファイルを選んで読み込む」でそのファイルを選ぶ</li>
+        </ol>
+        <p class="hint">スマホを替える予定がなくても、ときどき書き出しておくと安心です</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- 代打・交代の選手を選ぶ小さな画面 -->
+  <dialog id="sub-dialog">
+    <h2 id="sub-title"></h2>
+    <label>代わりに入る選手 <select id="sub-player"></select></label>
+    <label>何回から <select id="sub-inning"></select></label>
+    <div class="buttons">
+      <button id="sub-cancel" class="secondary small">閉じる</button>
+      <button id="sub-save" class="small">交代する</button>
+    </div>
+  </dialog>
+
+  <!-- 打席の記録を直すための小さな画面 -->
+  <dialog id="edit-dialog">
+    <h2 id="edit-title"></h2>
+    <label>回 <select id="edit-inning"></select></label>
+    <label>結果 <select id="edit-result"></select></label>
+    <label>打点 <select id="edit-rbi"></select></label>
+    <label class="check"><input type="checkbox" id="edit-run"> 得点した（ホームに還った）</label>
+    <label>盗塁 <select id="edit-sb"></select></label>
+    <div class="buttons">
+      <button id="edit-delete" class="danger small delete-left">削除</button>
+      <button id="edit-cancel" class="secondary small">閉じる</button>
+      <button id="edit-save" class="small">保存</button>
+    </div>
+  </dialog>
+
+  <!-- 共通の部品を先に読み込んでから、このページの動きを読み込む -->
+  <script src="common.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
