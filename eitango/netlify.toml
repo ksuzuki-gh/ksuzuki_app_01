@@ -1,0 +1,8 @@
+# えいたんご専用の Netlify の設定
+# Netlify で「Base directory（基準のフォルダ）」を eitango にしたサイトで使われる
+# （チーム成績のサイトは、一番上の netlify.toml を使うので影響なし）
+[build]
+  publish = "."   # eitango フォルダの中身をそのまま公開する
+  command = ""    # 組み立て（ビルド）は不要
+  # eitango フォルダに変更がないときは、公開し直さない
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- ."
