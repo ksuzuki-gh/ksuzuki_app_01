@@ -578,3 +578,19 @@ tr.separator-row td {
   font-size: 0.8rem;
   text-align: left;
 }
+
+/* ===== 試合入力のやり方（開け閉めできる説明） ===== */
+.howto summary {
+  cursor: pointer;
+  font-weight: bold;
+  color: #2f6b3a;
+}
+
+.howto .steps {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+}
+
+.howto .steps li {
+  margin-bottom: 6px;
+}

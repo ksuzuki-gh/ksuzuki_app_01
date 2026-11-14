@@ -1143,6 +1143,8 @@ setupDialogOptions();
 selectGame(null);
 renderAll();
 setMode(firstMode());
+// このスマホにまだ試合がないとき（初めて使うときや、代理の人）は、試合入力のやり方を開いておく
+$("howto").open = data.games.length === 0;
 
 // 公開中の成績が読み込めたら、「成績を見る」に表示する。
 // このスマホに選手が1人もいなければ（代理の人が初めて開いたときなど）、選手データも自動で読み込む
