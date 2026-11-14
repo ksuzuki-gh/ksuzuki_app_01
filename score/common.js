@@ -513,7 +513,7 @@ function renderSheetTable(table, game, players, currentInning, onChipClick) {
 
 // 打撃成績の表を table に作る
 //   collected: collectStats の戻り値
-//   rows:      表に出す行（並べかえたものを渡せる）
+//   rows:      表に出す行（並べかえたものを渡せる）。{ separator: "文字" } の行は、区切りの行になる
 //   hideEmpty: true なら、打席がない選手は表に出さない
 function renderStatsTable(table, collected, rows, hideEmpty) {
   table.innerHTML = "";
@@ -535,6 +535,15 @@ function renderStatsTable(table, collected, rows, hideEmpty) {
   };
 
   for (const row of rows) {
+    if (row.separator) {
+      // 区切りの行（例：「参考：規定打席 10 未満」）
+      const tr = el("tr", "separator-row");
+      const td = el("td", "", row.separator);
+      td.colSpan = columns.length;
+      tr.append(td);
+      table.append(tr);
+      continue;
+    }
     if (hideEmpty && row.totals.pa === 0) continue;
     addRow(row.name, row.games, row.totals);
   }

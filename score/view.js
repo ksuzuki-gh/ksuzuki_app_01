@@ -10,6 +10,9 @@ const Viewer = (() => {
 
   let data = normalizeData({ players: [], games: [] });
 
+  // 規定打席：通算成績を並べかえるとき、この打席数以上の選手を上にまとめる
+  const QUALIFYING_PA = 10;
+
   // --- 並び順の種類 ---
   // key:  calcStats などで計算した数字のどれで並べるか（null なら選手の登録順）
   const SORTS = [
@@ -53,6 +56,20 @@ const Viewer = (() => {
     return [...rows].sort((a, b) => (b.totals[key] ?? -1) - (a.totals[key] ?? -1));
   }
 
+  // 規定打席以上の選手を上、未満の選手を下に分けて、それぞれを並べかえる（「選手順」のときは分けない）
+  function sortRowsQualified(rows, sortIndex) {
+    if (SORTS[sortIndex].key === null) return rows;
+    const played = rows.filter((row) => row.totals.pa > 0);
+    const qualified = played.filter((row) => row.totals.pa >= QUALIFYING_PA);
+    const others = played.filter((row) => row.totals.pa < QUALIFYING_PA);
+    if (others.length === 0) return sortRows(qualified, sortIndex);
+    return [
+      ...sortRows(qualified, sortIndex),
+      { separator: `（参考：規定打席 ${QUALIFYING_PA} 未満）` },
+      ...sortRows(others, sortIndex),
+    ];
+  }
+
   // シーズン
   function renderSeason() {
     const season = Number(byId("v-season-select").value);
@@ -71,7 +88,7 @@ const Viewer = (() => {
       ? `${seasonLabel(seasons[seasons.length - 1])}〜${seasonLabel(seasons[0])}`
       : "";
     byId("v-career-info").textContent = `全${collected.team.games}試合　${range}`;
-    const rows = sortRows(collected.rows, Number(byId("v-career-sort").value));
+    const rows = sortRowsQualified(collected.rows, Number(byId("v-career-sort").value));
     renderStatsTable(byId("v-career-table"), collected, rows, true);
   }
 
