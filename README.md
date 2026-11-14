@@ -8,10 +8,12 @@
 | --- | --- | --- |
 | `memo/` | 📝 かんたんメモ帳 | メモを書いて保存・編集・削除 |
 | `score/` | ⚾ チーム成績 | 「成績を見る」（メンバー向け）と「記録する」（スコア入力）を1つにまとめたアプリ |
-| `eitango/` | 📖 えいたんご | 中学レベルの英単語・熟語をクイズやカードで覚える（中学生モード／小学生モード） |
+| `eitango/` | 📖 えいたんご | 中学レベルの英単語・熟語をクイズやカードで覚える（**別のサイトで公開**。下の説明を参照） |
 | `results/` | （移動のお知らせ） | 前の成績ページのURL。開くと `score/` の「成績を見る」に自動で移動します |
 
 公開先：Netlify（GitHub の main ブランチと連携して自動で公開。設定は `netlify.toml`）
+- チーム成績・メモ帳：neighbors-softball のサイト（一番上の `netlify.toml`）。`/eitango/` はこのサイトでは開けないようにしています
+- えいたんご：別のサイト（`eitango/netlify.toml`）
 
 ## 各アプリのファイルの役割
 | ファイル | 役割 |
@@ -62,6 +64,14 @@
 - 出塁率は、Excelの記録に合わせて犠打も割る数に入れて計算しています（2025年度以降の記録は犠飛のみ）
 
 ## えいたんご（eitango/）の使い方
+
+### 公開のしかた（別のサイトにする）
+同じリポジトリから、Netlify にもう1つサイトを作ります。
+1. Netlify で「Add new project」→「Import an existing project」→ GitHub → このリポジトリを選ぶ
+2. Branch to deploy は `main`、**Base directory は `eitango`**、Build command と Publish directory は空のまま
+3. 「Deploy」のあと、「Project configuration」→「Change project name」でサイト名を変える
+4. `https://＜サイト名＞.netlify.app/` で、えいたんごが直接開きます
+
 | ファイル | 役割 |
 | --- | --- |
 | `eitango/words.js` | 英単語のデータ（中1〜中3） |
