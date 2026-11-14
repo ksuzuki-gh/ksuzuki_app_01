@@ -11,7 +11,7 @@ const Viewer = (() => {
   let data = normalizeData({ players: [], games: [] });
 
   // 規定打席：通算成績を並べかえるとき、この打席数以上の選手を上にまとめる
-  const QUALIFYING_PA = 10;
+  const QUALIFYING_PA = 20;
 
   // --- 並び順の種類 ---
   // key:  calcStats などで計算した数字のどれで並べるか（null なら選手の登録順）
