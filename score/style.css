@@ -569,3 +569,12 @@ code {
 [hidden] {
   display: none !important;
 }
+
+/* ===== 表の区切りの行（規定打席未満など） ===== */
+tr.separator-row td {
+  padding: 6px 8px;
+  background: #f0f0f0;
+  color: #666;
+  font-size: 0.8rem;
+  text-align: left;
+}
